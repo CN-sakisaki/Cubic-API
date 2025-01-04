@@ -39,6 +39,7 @@ public abstract class BaseService implements ApiService{
     @Override
     public <O, T extends ResultResponse> T request(JsApiClient jsApiClient, BaseRequest<O, T> request) throws ApiException {
         try {
+            checkConfig(jsApiClient);
             return res(request);
         } catch (Exception e) {
             throw new ApiException(ErrorCode.OPERATION_ERROR, e.getMessage());
@@ -47,7 +48,6 @@ public abstract class BaseService implements ApiService{
 
     @Override
     public <O, T extends ResultResponse> T request(BaseRequest<O, T> request) throws ApiException {
-        checkConfig(jsApiClient);
         return res(request);
     }
 
