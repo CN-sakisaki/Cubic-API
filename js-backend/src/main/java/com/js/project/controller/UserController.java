@@ -10,10 +10,8 @@ import com.js.project.common.ErrorCode;
 import com.js.project.common.ResultUtils;
 import com.js.project.exception.BusinessException;
 import com.js.project.model.dto.user.*;
-import com.js.project.model.dto.user.*;
 import com.js.project.model.vo.UserVO;
 import com.js.project.service.UserService;
-
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
@@ -95,7 +93,6 @@ public class UserController {
         return ResultUtils.success(result);
     }
 
-    // [加入编程导航](https://js.icu) 深耕编程提升【两年半】、国内净值【最高】的编程社群、用心服务【20000+】求学者、帮你自学编程【不走弯路】
 
     /**
      * 获取当前登录用户
