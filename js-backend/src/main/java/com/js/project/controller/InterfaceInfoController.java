@@ -3,7 +3,12 @@ package com.js.project.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
 import com.js.jsapiclientsdk.client.JsApiClient;
+import com.js.jsapiclientsdk.model.request.CurrentRequest;
+import com.js.jsapiclientsdk.model.response.ResultResponse;
+import com.js.jsapiclientsdk.service.ApiService;
 import com.js.jsapicommon.model.entity.InterfaceInfo;
 import com.js.jsapicommon.model.entity.User;
 import com.js.project.annotation.AuthCheck;
@@ -18,13 +23,16 @@ import com.js.project.model.enums.InterfaceInfoStatusEnum;
 import com.js.project.service.InterfaceInfoService;
 import com.js.project.service.UserService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author JianShang
@@ -45,6 +53,10 @@ public class InterfaceInfoController {
 
     @Resource
     private JsApiClient jsApiClient;
+
+    private final Gson gson = new Gson();
+    @Autowired
+    private ApiService apiService;
 
     // region 增删改查
 
@@ -171,7 +183,7 @@ public class InterfaceInfoController {
      *
      * @param interfaceInfoQueryRequest
      * @param request
-     * @return BaseResponse<Page<InterfaceInfo>>
+     * @return BaseResponse<Page < InterfaceInfo>>
      */
     @GetMapping("/list/page")
     public BaseResponse<Page<InterfaceInfo>> listInterfaceInfoByPage(InterfaceInfoQueryRequest interfaceInfoQueryRequest, HttpServletRequest request) {
@@ -212,28 +224,16 @@ public class InterfaceInfoController {
     @AuthCheck(mustRole = "admin")
     public BaseResponse<Boolean> onlineInterfaceInfo(@RequestBody IdRequest idRequest,
                                                      HttpServletRequest request) {
-        if (idRequest == null || idRequest.getId() <= 0) {
+        if (ObjectUtils.anyNull(idRequest, idRequest.getId()) || idRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        long id = idRequest.getId();
-        // 判断是否存在
-        InterfaceInfo oldInterfaceInfo = interfaceInfoService.getById(id);
-        if (oldInterfaceInfo == null) {
+        Long id = idRequest.getId();
+        InterfaceInfo interfaceInfo = interfaceInfoService.getById(id);
+        if (interfaceInfo == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
-        // 判断该接口是否可以调用
-        com.js.jsapiclientsdk.model.User user = new com.js.jsapiclientsdk.model.User();
-        user.setUsername("test");
-        String username = jsApiClient.getUsernameByPost(user);
-        if (StringUtils.isBlank(username)) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "接口验证失败");
-        }
-        // 仅本人或管理员可修改
-        InterfaceInfo interfaceInfo = new InterfaceInfo();
-        interfaceInfo.setId(id);
         interfaceInfo.setStatus(InterfaceInfoStatusEnum.ONLINE.getValue());
-        boolean result = interfaceInfoService.updateById(interfaceInfo);
-        return ResultUtils.success(result);
+        return ResultUtils.success(interfaceInfoService.updateById(interfaceInfo));
     }
 
     /**
@@ -274,26 +274,47 @@ public class InterfaceInfoController {
     @PostMapping("/invoke")
     public BaseResponse<Object> invokeInterfaceInfo(@RequestBody InterfaceInfoInvokeRequest interfaceInfoInvokeRequest,
                                                     HttpServletRequest request) {
-        if (interfaceInfoInvokeRequest == null || interfaceInfoInvokeRequest.getId() <= 0) {
+        if (ObjectUtils.anyNull(interfaceInfoInvokeRequest, interfaceInfoInvokeRequest.getId()) || interfaceInfoInvokeRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         long id = interfaceInfoInvokeRequest.getId();
-        String userRequestParams = interfaceInfoInvokeRequest.getUserRequestParams();
         // 判断是否存在
-        InterfaceInfo oldInterfaceInfo = interfaceInfoService.getById(id);
-        if (oldInterfaceInfo == null) {
+        InterfaceInfo interfaceInfo = interfaceInfoService.getById(id);
+
+        if (interfaceInfo == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
-        if (oldInterfaceInfo.getStatus() == InterfaceInfoStatusEnum.OFFLINE.getValue()) {
+        if (interfaceInfo.getStatus() == InterfaceInfoStatusEnum.OFFLINE.getValue()) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "接口已关闭");
         }
+        // 构建请求参数
+        List<InterfaceInfoInvokeRequest.Field> fieldList = interfaceInfoInvokeRequest.getRequestParams();
+        String requestParams = "{}";
+        if (fieldList != null && !fieldList.isEmpty()) {
+            JsonObject jsonObject = new JsonObject();
+            for (InterfaceInfoInvokeRequest.Field field : fieldList) {
+                jsonObject.addProperty(field.getFieldName(), field.getValue());
+            }
+            requestParams = gson.toJson(jsonObject);
+        }
+        Map<String, Object> params = new Gson().fromJson(requestParams, new TypeToken<Map<String, Object>>() {}.getType());
         User loginUser = userService.getLoginUser(request);
         String accessKey = loginUser.getAccessKey();
         String secretKey = loginUser.getSecretKey();
-        JsApiClient tempClient = new JsApiClient(accessKey, secretKey);
-        Gson gson = new Gson();
-        com.js.jsapiclientsdk.model.User user = gson.fromJson(userRequestParams, com.js.jsapiclientsdk.model.User.class);
-        String usernameByPost = tempClient.getUsernameByPost(user);
-        return ResultUtils.success(usernameByPost);
+        try {
+            // JsApiClient tempClient = new JsApiClient(accessKey, secretKey);
+            // com.js.jsapiclientsdk.model.User user = gson.fromJson(userRequestParams, com.js.jsapiclientsdk.model.User.class);
+            // String usernameByPost = tempClient.getUsernameByPost(user);
+            // return ResultUtils.success(usernameByPost);
+            JsApiClient jsApiClient = new JsApiClient(accessKey, secretKey);
+            CurrentRequest currentRequest = new CurrentRequest();
+            currentRequest.setMethod(interfaceInfo.getMethod());
+            currentRequest.setPath(interfaceInfo.getUrl());
+            currentRequest.setRequestParams(params);
+            ResultResponse response = apiService.request(jsApiClient, currentRequest);
+            return ResultUtils.success(response.getData());
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, e.getMessage());
+        }
     }
 }
