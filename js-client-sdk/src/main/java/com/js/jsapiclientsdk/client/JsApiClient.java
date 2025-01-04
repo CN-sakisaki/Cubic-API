@@ -15,10 +15,14 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class JsApiClient {
 
-    private static final String GATEWAY_HOST = "http://localhost:8090";
-
+    /**
+     * 访问密钥
+     */
     private String accessKey;
 
+    /**
+     * 密钥
+     */
     private String secretKey;
 
     // public String getNameByGet(String name) {
