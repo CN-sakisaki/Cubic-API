@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.yupi.project.provider;
+package com.js.jsgateway.project.provider;
 
 import java.util.concurrent.CompletableFuture;
 

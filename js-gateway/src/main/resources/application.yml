@@ -5,27 +5,14 @@ spring:
   cloud:
     gateway:
       default-filters:
-        - AddResponseHeader=source, yupi
+        - AddResponseHeader=source, gateway
       routes:
-        - id: api_route
+        - id: js-api-interface
+          # 当请求符合这个路由规则的条件时，网关会将请求转发到这个地址
           uri: http://localhost:8123
+          #定义路由匹配的条件
           predicates:
             - Path=/api/**
-#        - id: add_request_header_route
-#          uri: http://localhost:8123
-#          predicates:
-#            - Path=/api/**
-#          filters:
-#            - AddRequestHeader=yupi, swag
-#            - AddRequestParameter=name, dog
-#            - name: CircuitBreaker
-#              args:
-#                name: myCircuitBreaker
-#                fallbackUri: forward:/fallback
-#        - id: yupi-fallback
-#          uri: https://yupi.icu
-#          predicates:
-#            - Path=/fallback
 logging:
   level:
     org:
