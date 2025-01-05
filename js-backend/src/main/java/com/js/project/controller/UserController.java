@@ -1,25 +1,31 @@
 package com.js.project.controller;
 
+import cn.hutool.core.util.RandomUtil;
+import cn.hutool.crypto.digest.DigestUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.plugins.pagination.PageDTO;
 import com.js.jsapicommon.model.entity.User;
+import com.js.project.annotation.AuthCheck;
 import com.js.project.common.BaseResponse;
 import com.js.project.common.DeleteRequest;
 import com.js.project.common.ErrorCode;
 import com.js.project.common.ResultUtils;
+import com.js.project.constant.UserConstant;
 import com.js.project.exception.BusinessException;
 import com.js.project.model.dto.user.*;
 import com.js.project.model.vo.UserVO;
 import com.js.project.service.UserService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.stream.Collectors;
+
 
 /**
  * @author JianShang
@@ -33,6 +39,11 @@ public class UserController {
 
     @Resource
     private UserService userService;
+
+    /**
+     * 盐值，混淆密码
+     */
+    private static final String SALT = "js";
 
     // region 登录相关
 
@@ -120,12 +131,22 @@ public class UserController {
      * @return
      */
     @PostMapping("/add")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Long> addUser(@RequestBody UserAddRequest userAddRequest, HttpServletRequest request) {
         if (userAddRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User user = new User();
         BeanUtils.copyProperties(userAddRequest, user);
+
+        // 2. 加密
+        String encryptPassword = DigestUtils.md5DigestAsHex((SALT + user.getUserPassword()).getBytes());
+        // 3. 分配 accessKey, secretKey
+        String accessKey = DigestUtil.md5Hex(SALT + user.getUserAccount() + RandomUtil.randomNumbers(5));
+        String secretKey = DigestUtil.md5Hex(SALT + user.getUserAccount() + RandomUtil.randomNumbers(8));
+        user.setAccessKey(accessKey);
+        user.setSecretKey(secretKey);
+        user.setUserPassword(encryptPassword);
         boolean result = userService.save(user);
         if (!result) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR);
@@ -141,6 +162,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/delete")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> deleteUser(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         if (deleteRequest == null || deleteRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -157,6 +179,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/update")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> updateUser(@RequestBody UserUpdateRequest userUpdateRequest, HttpServletRequest request) {
         if (userUpdateRequest == null || userUpdateRequest.getId() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -180,6 +203,9 @@ public class UserController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User user = userService.getById(id);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+        }
         UserVO userVO = new UserVO();
         BeanUtils.copyProperties(user, userVO);
         return ResultUtils.success(userVO);

@@ -9,10 +9,11 @@ import java.io.Serializable;
  * @version 1.0.0
  * @description 通用返回类
  * @date 2024-09-13 12:01:37
- * @see Serializable
  */
 @Data
 public class BaseResponse<T> implements Serializable {
+
+    private static final long serialVersionUID = 4558190455389293451L;
 
     private int code;
 

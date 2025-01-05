@@ -1,7 +1,7 @@
 spring:
   application:
     name: js-backend
-  # DataSource Config
+#   DataSource Config
 #  datasource:
 #    url: jdbc:mysql://localhost:3306/jsapi?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
 #    username: root
