@@ -56,7 +56,7 @@ public abstract class BaseService implements ApiService{
      * @param jsApiClient JsApi客户端
      * @throws ApiException 自定义异常
      */
-    public void checkConfig(JsApiClient jsApiClient) throws ApiException {
+    private void checkConfig(JsApiClient jsApiClient) throws ApiException {
         if (this.jsApiClient == null && this.getJsApiClient() == null) {
             throw new ApiException(ErrorCode.NO_AUTH_ERROR, "请先配置密钥AccessKey/SecretKey");
         }
@@ -174,7 +174,7 @@ public abstract class BaseService implements ApiService{
      * @return {@link T}
      * @throws ApiException 业务异常
      */
-    public <O, T extends ResultResponse> T res(BaseRequest<O, T> request) throws ApiException {
+    private  <O, T extends ResultResponse> T res(BaseRequest<O, T> request) throws ApiException {
         if (jsApiClient == null || StringUtils.isAnyBlank(jsApiClient.getAccessKey(), jsApiClient.getSecretKey())) {
             throw new ApiException(ErrorCode.NO_AUTH_ERROR, "请先配置密钥AccessKey/SecretKey");
         }
@@ -189,6 +189,7 @@ public abstract class BaseService implements ApiService{
         String body = httpResponse.body();
         Map<String, Object> data = new HashMap<>();
         if (httpResponse.getStatus() != 200) {
+            // 将错误信息 转化为 具体对象类
             ErrorResponse errorResponse = JSONUtil.toBean(body, ErrorResponse.class);
             data.put("errorMessage", errorResponse.getMessage());
             data.put("code", errorResponse.getCode());
