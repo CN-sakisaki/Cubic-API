@@ -1,4 +1,4 @@
-package com.yupi.yuapiinterface;
+package com.js.jsapiinterface;
 
 import com.yupi.yuapiclientsdk.client.YuApiClient;
 import com.yupi.yuapiclientsdk.model.User;
