@@ -2,7 +2,7 @@ server:
   port: 8123
   servlet:
     context-path: /api
-yuapi:
-  client:
-    access-key: yupi
-    secret-key: abcdefgh
+#yuapi:
+#  client:
+#    access-key: js
+#    secret-key: abcdefgh
