@@ -1,11 +1,11 @@
-spring:
-  profiles:
-    active: dev
-  cloud:
-    nacos:
-      server-addr: localhost
-      config:
-        file-extension: yaml
-        shared-configs:
-          - data-id: shared-jdbc.yaml
-          - data-id: shared-dubbo.yaml
+#spring:
+#  profiles:
+#    active: dev
+#  cloud:
+#    nacos:
+#      server-addr: localhost
+#      config:
+#        file-extension: yaml
+#        shared-configs:
+#          - data-id: shared-jdbc.yaml
+#          - data-id: shared-dubbo.yaml
