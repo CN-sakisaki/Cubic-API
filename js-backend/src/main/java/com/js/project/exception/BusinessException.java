@@ -1,6 +1,7 @@
 package com.js.project.exception;
 
 import com.js.project.common.ErrorCode;
+import lombok.Getter;
 
 /**
  * @author JianShang
@@ -9,6 +10,7 @@ import com.js.project.common.ErrorCode;
  * @date 2024-09-13 12:04:38
 
  */
+@Getter
 public class BusinessException extends RuntimeException {
 
     private final int code;
@@ -28,7 +30,4 @@ public class BusinessException extends RuntimeException {
         this.code = errorCode.getCode();
     }
 
-    public int getCode() {
-        return code;
-    }
 }
