@@ -21,6 +21,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 公共功能抽象，抽象出多个服务类共有的功能和行为
@@ -29,7 +30,7 @@ import java.util.Map;
  */
 @Slf4j
 @Data
-public abstract class BaseService implements ApiService{
+public abstract class BaseService implements ApiService {
     private JsApiClient jsApiClient;
     /**
      * 网关HOST
@@ -73,21 +74,30 @@ public abstract class BaseService implements ApiService{
      * @return {@link String}
      */
     private <O, T extends ResultResponse> String splicingGetRequest(BaseRequest<O, T> request, String path) {
+        // 先移除请求参数Map中的空值参数 ""，避免路径后面出现 ?= 情况
+        Map<String, Object> filteredParams = request.getRequestParams().entrySet().stream()
+                .filter(entry -> StringUtils.isNotEmpty(entry.getValue().toString()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
         StringBuilder urlBuilder = new StringBuilder(gatewayHost);
         // urlBuilder最后是/结尾且path以/开头的情况下，去掉urlBuilder结尾的/
         if (urlBuilder.toString().endsWith("/") && path.startsWith("/")) {
             urlBuilder.setLength(urlBuilder.length() - 1);
         }
         urlBuilder.append(path);
-        if (!request.getRequestParams().isEmpty()) {
+        if (!filteredParams.isEmpty()) {
+            boolean isFirstParam = true;
             urlBuilder.append("?");
-            for (Map.Entry<String, Object> entry : request.getRequestParams().entrySet()) {
+            for (Map.Entry<String, Object> entry : filteredParams.entrySet()) {
                 String key = entry.getKey();
                 String value = entry.getValue().toString();
-                urlBuilder.append(key).append("=").append(value).append("&");
+                if (isFirstParam) {
+                    urlBuilder.append(key).append("=").append(value);
+                    isFirstParam = false;
+                } else {
+                    urlBuilder.append("&").append(key).append("=").append(value);
+                }
             }
-            // 移除最后的“&”
-            urlBuilder.deleteCharAt(urlBuilder.length() - 1);
         }
         log.info("GET请求路径：{}", urlBuilder);
         return urlBuilder.toString();
@@ -130,7 +140,7 @@ public abstract class BaseService implements ApiService{
         if (StringUtils.isBlank(path)) {
             throw new ApiException(ErrorCode.OPERATION_ERROR, "请求路径不存在");
         }
-
+        // 去除路径中网关主机相关前缀
         if (path.startsWith(gatewayHost)) {
             path = path.substring(gatewayHost.length());
         }
