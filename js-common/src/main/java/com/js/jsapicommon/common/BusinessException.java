@@ -1,18 +1,15 @@
-package com.js.project.exception;
+package com.js.jsapicommon.common;
 
-import com.js.project.common.ErrorCode;
+
 import lombok.Getter;
 
 /**
- * @author JianShang
- * @version 1.0.0
- * @description 自定义异常类
- * @date 2024-09-13 12:04:38
-
+ * 自定义异常类
+ * @author sakisaki
+ * @date 2025/1/11 16:30
  */
 @Getter
 public class BusinessException extends RuntimeException {
-
     private final int code;
 
     public BusinessException(int code, String message) {

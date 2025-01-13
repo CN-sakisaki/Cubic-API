@@ -1,6 +1,9 @@
 package com.js.jsgateway.gateway;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.js.jsapicommon.common.ErrorCode;
+import com.js.jsapicommon.model.dto.RequestParamsField;
 import com.js.jsapicommon.model.entity.InterfaceInfo;
 import com.js.jsapicommon.model.entity.User;
 import com.js.jsapicommon.model.enums.InterfaceInfoStatusEnum;
@@ -9,8 +12,10 @@ import com.js.jsapicommon.service.InnerUserInterfaceInfoService;
 import com.js.jsapicommon.service.InnerUserService;
 import com.js.jsgateway.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.config.annotation.DubboReference;
+import org.bouncycastle.util.Strings;
 import org.reactivestreams.Publisher;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -24,18 +29,23 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpResponseDecorator;
 import org.springframework.stereotype.Component;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static com.js.jsapiclientsdk.utils.SignUtils.getSign;
-import static com.js.jsgateway.utils.NetUtils.getIp;
+import static com.js.jsgateway.gateway.CacheBodyGatewayFilter.CACHE_REQUEST_BODY_OBJECT_KEY;
+// import static com.js.jsgateway.utils.NetUtils.getIp;
 
 /**
  * 网关全局过滤器
@@ -55,26 +65,22 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
     @DubboReference
     private InnerUserInterfaceInfoService innerUserInterfaceInfoService;
 
-    /**
-     * 请求白名单
+    /*
+      请求白名单
      */
-    private static final List<String> IP_WHITE_LIST = Arrays.asList("127.0.0.1", "111.230.49.155");
+    // private static final List<String> IP_WHITE_LIST = Arrays.asList("127.0.0.1", "111.230.49.155");
     /**
      * 五分钟过期时间
      */
     private static final long FIVE_MINUTES = 5L * 60;
 
+    private static final String INTERFACE_HOST = "http://localhost:8123";
+
+    private static final String GATEWAY_HOST = "http://localhost:8090";
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        // 输出日志
-        ServerHttpRequest request = exchange.getRequest();
-        log.info("请求唯一id：{}", request.getId());
-        log.info("请求方法：{}", request.getMethod());
-        log.info("请求路径：{}", request.getPath());
-        log.info("网关本地地址：{}", request.getLocalAddress());
-        log.info("请求远程地址：{}", request.getRemoteAddress());
-        log.info("接口请求IP：{}", getIp(request));
-        log.info("url:{}", request.getURI());
+
         return verifyParameters(exchange, chain);
     }
 
@@ -124,7 +130,11 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
             String uri = request.getURI().toString().trim();
             // 校验请求路径和请求方法
             if (StringUtils.isAnyBlank(uri, method)) {
-                throw new BusinessException(ErrorCode.PARAMS_ERROR);
+                throw new BusinessException(ErrorCode.PARAMS_ERROR,"请检查请求参数");
+            }
+            int index = uri.indexOf("?");
+            if (index != -1) {
+                uri = uri.substring(0, index);
             }
             // 校验接口
             InterfaceInfo interfaceInfo = innerInterfaceInfoService.getInterfaceInfo(uri, method);
@@ -135,6 +145,40 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
             if (interfaceInfo.getStatus() == InterfaceInfoStatusEnum.OFFLINE.getValue()) {
                 throw new BusinessException(ErrorCode.PARAMS_ERROR, "接口未开启");
             }
+            MultiValueMap<String, String> queryParams = request.getQueryParams();
+            String requestParams = interfaceInfo.getRequestParams();
+            List<RequestParamsField> list = new Gson().fromJson(requestParams, new TypeToken<List<RequestParamsField>>() {
+            }.getType());
+            if ("POST".equals(method)) {
+                Object cacheBody = exchange.getAttribute(CACHE_REQUEST_BODY_OBJECT_KEY);
+                if (ObjectUtils.anyNotNull(cacheBody)) {
+                    String requestBody = getPostRequestBody((Flux<DataBuffer>) cacheBody);
+                    log.info("POST请求参数：{}", requestBody);
+                    Map<String, Object> requestBodyMap = new Gson().fromJson(requestBody, new TypeToken<HashMap<String, Object>>() {
+                    }.getType());
+                    if (StringUtils.isNotBlank(requestParams)) {
+                        for (RequestParamsField requestParamsField : list) {
+                            if ("是".equals(requestParamsField.getRequired())) {
+                                if (StringUtils.isBlank((CharSequence) requestBodyMap.get(requestParamsField.getFieldName())) || !requestBodyMap.containsKey(requestParamsField.getFieldName())) {
+                                    throw new BusinessException(ErrorCode.FORBIDDEN_ERROR, "请求参数有误，" + requestParamsField.getFieldName() + "为必选项，详细参数请参考API文档：https://doc.qimuu.icu/");
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if ("GET".equals(method)) {
+                log.info("GET请求参数：{}", request.getQueryParams());
+                // 校验请求参数
+                if (StringUtils.isNotBlank(requestParams)) {
+                    for (RequestParamsField requestParamsField : list) {
+                        if ("是".equals(requestParamsField.getRequired())) {
+                            if (StringUtils.isBlank(queryParams.getFirst(requestParamsField.getFieldName())) || !queryParams.containsKey(requestParamsField.getFieldName())) {
+                                throw new BusinessException(ErrorCode.FORBIDDEN_ERROR, "请求参数有误，" + requestParamsField.getFieldName() + "为必选项，详细参数请参考API文档：https://doc.qimuu.icu/");
+                            }
+                        }
+                    }
+                }
+            }
             // 下一步处理
             return handleResponse(exchange, chain, user, interfaceInfo);
         } catch (Exception e) {
@@ -142,10 +186,43 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
         }
     }
 
+
+    /**
+     * 获取post请求正文
+     *
+     * @param body 请求体
+     * @return {@link String}
+     */
+    private String getPostRequestBody(Flux<DataBuffer> body) {
+        // AtomicReference具备原子操作的特性，在多线程环境下能保证对其所存储值的操作是线程安全的
+        AtomicReference<String> getBody = new AtomicReference<>();
+        body.subscribe(new Consumer<DataBuffer>() {
+            @Override
+            public void accept(DataBuffer buffer) {
+                // 存放从 buffer 中读取出来的数据
+                byte[] bytes = new byte[buffer.readableByteCount()];
+                // 完成数据的提取操作
+                buffer.read(bytes);
+                // 释放当前已经读取完数据的 buffer 资源，避免内存泄漏
+                DataBufferUtils.release(buffer);
+                // 转换为字符串，完成从 DataBuffer 数据块到字符串的提取和存储过程，
+                // 每次有新的 DataBuffer 到来并处理后都会更新 getBody 中存储的字符串内容
+                getBody.set(Strings.fromUTF8ByteArray(bytes));
+            }
+        });
+        // body.subscribe(buffer -> {
+        //     byte[] bytes = new byte[buffer.readableByteCount()];
+        //     buffer.read(bytes);
+        //     DataBufferUtils.release(buffer);
+        //     getBody.set(Strings.fromUTF8ByteArray(bytes));
+        // });
+        return getBody.get();
+    }
+
     /**
      *
-     * @param user
-     * @param interfaceInfo
+     * @param user 请求的用户信息
+     * @param interfaceInfo 接口信息
      * @return Mono<Void>
      */
     public Mono<Void> handleResponse(ServerWebExchange exchange, GatewayFilterChain chain, User user, InterfaceInfo interfaceInfo) {
@@ -183,7 +260,7 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
                                         byte[] content = new byte[dataBuffer.readableByteCount()];
                                         // 将 DataBuffer 中的数据读取到这个字节数组中
                                         dataBuffer.read(content);
-                                        //释放掉内存
+                                        // 释放掉内存
                                         DataBufferUtils.release(dataBuffer);
                                         // 构建日志
                                         StringBuilder stringBuilder = new StringBuilder(200);
@@ -206,11 +283,13 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
                 };
                 // mutate() 方法返回一个 ServerWebExchange.Builder对象
                 // 将装饰后的响应对象替换掉原本 ServerWebExchange 实例中的原始响应对象
-                return chain.filter(exchange.mutate().response(decoratedResponse).build());
+                ServerWebExchange serverWebExchange = exchange.mutate().response(decoratedResponse).build();
+                URI uri = exchange.getRequest().getURI();
+                return chain.filter(serverWebExchange);
             }
             // 降级处理返回数据
             return chain.filter(exchange);
-        }catch (Exception e) {
+        } catch (Exception e) {
             log.error("网关处理响应异常 {} ", String.valueOf(e));
             return chain.filter(exchange);
         }

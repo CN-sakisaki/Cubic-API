@@ -2,7 +2,13 @@ server:
   port: 8123
   servlet:
     context-path: /api
-yuapi:
-  client:
-    access-key: yupi
-    secret-key: abcdefgh
+spring:
+  profiles:
+    active: dev
+  mvc:
+    path match:
+      matching-strategy: ant_path_matcher
+#yuapi:
+#  client:
+#    access-key: js
+#    secret-key: abcdefgh

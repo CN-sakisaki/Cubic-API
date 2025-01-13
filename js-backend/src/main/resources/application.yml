@@ -2,11 +2,11 @@ spring:
   application:
     name: js-backend
 #   DataSource Config
-#  datasource:
-#    url: jdbc:mysql://localhost:3306/jsapi?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-#    username: root
-#    password: JS285699
-#    driver-class-name: com.mysql.cj.jdbc.Driver
+  datasource:
+    url: jdbc:mysql://localhost:3306/jsapi?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: JS285699
+    driver-class-name: com.mysql.cj.jdbc.Driver
   mvc:
     pathmatch:
       matching-strategy: ANT_PATH_MATCHER
@@ -37,12 +37,12 @@ mybatis-plus:
 #  client:
 #    access-key: js
 #    secret-key: abcdefgh
-#dubbo:
-#  application:
-#    name: dubbo-springboot-demo-provider
-#  protocol:
-#    name: dubbo
-#    port: -1
-#  registry:
-#    id: nacos-registry
-#    address: nacos://localhost:8848
+dubbo:
+  application:
+    name: dubbo-springboot-demo-provider
+  protocol:
+    name: dubbo
+    port: -1
+  registry:
+    id: nacos-registry
+    address: nacos://localhost:8848

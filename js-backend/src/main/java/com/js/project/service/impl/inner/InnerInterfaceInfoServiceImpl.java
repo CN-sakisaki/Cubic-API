@@ -27,7 +27,7 @@ public class InnerInterfaceInfoServiceImpl implements InnerInterfaceInfoService 
     @Override
     public InterfaceInfo getInterfaceInfo(String url, String method) {
         if (StringUtils.isAnyBlank(url, method)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请检查请求的参数");
         }
         QueryWrapper<InterfaceInfo> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("url", url);
