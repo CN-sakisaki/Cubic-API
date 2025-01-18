@@ -12,9 +12,33 @@ import java.time.LocalDate;
  */
 public interface MonthlySignRecordsService extends IService<MonthlySignRecords> {
 
+    /**
+     * 签到
+     * @param userId 用户Id
+     * @return boolean
+     */
     boolean sign(Long userId);
 
+    /**
+     * 检查本月指定日期用户是否已经签到
+     * @param userId 用户Id
+     * @param day 日期
+     * @return boolean
+     */
     boolean isSigned(Long userId, int day);
 
-    String generateSignKey(LocalDate date, Long userId);
+    /**
+     * 将签到信息同步到数据库
+     *
+     * @param userId    用户Id
+     * @param signMonth 签到月份 (格式：yyyy-MM)
+     */
+    String generateSignKey(Long userId, LocalDate signMonth);
+
+    /**
+     * 计算用户累计签到天数
+     * @param userId 用户Id
+     * @return int
+     */
+    int countTotalSignDays(Long userId);
 }

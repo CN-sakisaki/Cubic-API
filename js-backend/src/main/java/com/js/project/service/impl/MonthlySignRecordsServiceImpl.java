@@ -14,8 +14,8 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -41,11 +41,12 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
     /**
      * 签到
      * @param userId 用户Id
+     * @return boolean
      */
     @Override
     public boolean sign(Long userId) {
         // 生成 Redis 键
-        String key = generateSignKey(LocalDate.now(), userId);
+        String key = generateSignKey(userId, LocalDate.now());
         // 获取当前日期是当前月的第几天。
         int dayOfMonth = LocalDate.now().getDayOfMonth();
         if (!isSigned(userId, dayOfMonth)) {
@@ -75,7 +76,7 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
      */
     @Override
     public boolean isSigned(Long userId, int day) {
-        String key = generateSignKey(LocalDate.now().withDayOfMonth(day), userId);
+        String key = generateSignKey(userId, LocalDate.now().withDayOfMonth(day));
         return Boolean.TRUE.equals(stringRedisTemplate.opsForValue().getBit(key, day - 1));
     }
 
@@ -85,7 +86,7 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
      * @param signMonth 签到月份 (格式：yyyy-MM)
      */
     private void syncSignRecordToDB(Long userId, String signMonth) {
-        String redisKey = generateSignKey(LocalDate.now(), userId);
+        String redisKey = generateSignKey(userId, LocalDate.now());
         // 获取今天是本月的第几天
         int today = LocalDate.now().getDayOfMonth();
 
@@ -130,13 +131,14 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
 
     /**
      * 构建 Redis 的键，格式为 "sign{当前年月}{userId}"，用于存储用户的签到信息
-     * @param date 日期
-     * @param userId 用户Id
+     *
+     * @param userId    用户Id
+     * @param signMonth 日期
      * @return String
      */
     @Override
-    public String generateSignKey(LocalDate date, Long userId) {
-        return SignConstant.SIGN_KEY_PREFIX + date.format(DateTimeFormatter.ofPattern(SignConstant.DATE_FORMAT)) + ":" + userId;
+    public String generateSignKey(Long userId, LocalDate signMonth) {
+        return SignConstant.SIGN_KEY_PREFIX + signMonth.format(DateTimeFormatter.ofPattern(SignConstant.DATE_FORMAT)) + ":" + userId;
     }
 
     /**
@@ -160,47 +162,32 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
         return (int) (date.toEpochDay() - date.withDayOfMonth(1).toEpochDay());
     }
 
-    // public String getSignStatusStr(String redisKey) {
-    //     byte[] result = stringRedisTemplate.execute((RedisCallback<byte[]>) connection ->
-    //             connection.bitField(redisKey.getBytes(),
-    //                     BitFieldSubCommands.create()
-    //                             .get(BitFieldSubCommands.BitFieldSet.create()
-    //                                     .type(BitFieldSubCommands.BitFieldType.unsigned(32))
-    //                                     .valueAt(0)));
-    //     if (result == null || result.length == 0) {
-    //         return "";
-    //     }
-    //     // 假设结果是一个 32 位的无符号整数
-    //     long value = ((Long) BitSet.valueOf(result).toLongArray()[0]);
-    //     StringBuilder signStatusStr = new StringBuilder();
-    //     for (int i = 0; i < 32; i++) {
-    //         signStatusStr.append((value >> i) & 1);
-    //     }
-    //     return signStatusStr.reverse().toString();
-    // }
 
-// public byte[] getMonthlySignStatusFromRedis(long userId) {
-//     LocalDate now = LocalDate.now();
-//     int startDay = now.withDayOfMonth(1).getDayOfYear() - 1;
-//     int endDay = now.withDayOfMonth(now.lengthOfMonth()).getDayOfYear() - 1;
-//
-//     String key = "sign:bitmap:" + userId;
-//     List<Boolean> signStatusList = new ArrayList<>();
-//     for (int i = startDay; i <= endDay; i++) {
-//         boolean isSigned = Boolean.TRUE.equals(redisTemplate.opsForValue().getBit(key, i));
-//         signStatusList.add(isSigned);
-//     }
-//
-//     byte[] result = new byte[(endDay - startDay + 1 + 7) / 8];
-//     for (int i = 0; i < signStatusList.size(); i++) {
-//         if (signStatusList.get(i)) {
-//             int byteIndex = i / 8;
-//             int bitIndex = i % 8;
-//             result[byteIndex] |= (byte) (1 << bitIndex);
-//         }
-//     }
-//     return result;
-// }
+    /**
+     * 计算用户累计签到天数
+     * @param userId 用户Id
+     * @return int
+     */
+    @Override
+    public int countTotalSignDays(Long userId) {
+        // 查询该用户的所有签到记录
+        List<MonthlySignRecords> records = monthlySignRecordsMapper
+                .selectList(new QueryWrapper<MonthlySignRecords>().eq("userId", userId));
+        int totalSignDays = 0;
+        // 遍历每个月的签到记录
+        for (MonthlySignRecords record : records) {
+            String signStatus = record.getSignStatus();
+            if (signStatus != null) {
+                // 统计该月份签到的天数
+                for (char c : signStatus.toCharArray()) {
+                    if (c == '1') {
+                        totalSignDays++;
+                    }
+                }
+            }
+        }
+        return totalSignDays;
+    }
 }
 
 
