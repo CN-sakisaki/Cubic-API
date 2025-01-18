@@ -42,4 +42,9 @@ public class MonthlySignRecords implements Serializable {
      */
     private String signStatus;
 
+    /**
+     * 连续签到天数
+     */
+    private String consecutiveSignDays;
+
 }

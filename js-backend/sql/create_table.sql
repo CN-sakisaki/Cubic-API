@@ -34,14 +34,18 @@ create table user
 
 
 
-CREATE TABLE monthly_sign_records
+create table monthly_sign_records
 (
-    id         bigint AUTO_INCREMENT comment '主键Id' PRIMARY KEY,
-    userId     BIGINT      NOT NULL comment '用户Id',
-    signMonth  VARCHAR(10) NOT NULL comment '签到年月（yyyy-MM）',
-    signStatus BINARY(32)  NOT NULL comment '该月每天的签到情况',
-    UNIQUE (userId, signMonth)
-) comment '签到表';
+    id                  bigint auto_increment comment '主键Id'
+        primary key,
+    userId              bigint      not null comment '用户Id',
+    signMonth           varchar(10) not null comment '签到年月（yyyy-MM）',
+    signStatus          varchar(31) not null comment '该月每天的签到情况',
+    consecutiveSignDays varchar(5)  null comment '连续签到天数',
+    constraint userId
+        unique (userId, signMonth)
+)
+    comment '签到表';
 
 
 
