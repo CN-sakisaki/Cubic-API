@@ -28,17 +28,16 @@ public interface MonthlySignRecordsService extends IService<MonthlySignRecords> 
     boolean isSigned(Long userId, int day);
 
     /**
-     * 将签到信息同步到数据库
-     *
-     * @param userId    用户Id
-     * @param signMonth 签到月份 (格式：yyyy-MM)
-     */
-    String generateSignKey(Long userId, LocalDate signMonth);
-
-    /**
      * 计算用户累计签到天数
      * @param userId 用户Id
      * @return int
      */
     int countTotalSignDays(Long userId);
+
+    /**
+     * 从Redis中获取用户连续签到的数据
+     * @param consecutiveSignKey 存储的键
+     * @return Integer
+     */
+    Integer getConsecutiveSignDaysFromRedis(String consecutiveSignKey);
 }

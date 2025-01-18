@@ -14,4 +14,9 @@ public interface SignConstant {
      * 键 的签到时间格式
      */
     String DATE_FORMAT = "yyyy-MM";
+
+    String CONSECUTIVE_SIGN_DAYS = ":consecutiveSignDays";
+
+    String CONSECUTIVE_SIGN_PREFIX = "user:";
+
 }
