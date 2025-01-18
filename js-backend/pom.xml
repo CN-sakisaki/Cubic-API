@@ -13,7 +13,7 @@
     <artifactId>js-backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>JS-backend</name>
-    <description>JS接口</description>
+    <description>Cubic-后端</description>
     <properties>
         <java.version>8</java.version>
     </properties>
@@ -88,6 +88,12 @@
             <artifactId>junit</artifactId>
             <version>4.13.2</version>
             <scope>test</scope>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.redisson/redisson -->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+            <version>3.23.3</version>
         </dependency>
     </dependencies>
 
