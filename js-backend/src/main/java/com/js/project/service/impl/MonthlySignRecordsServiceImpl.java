@@ -38,63 +38,51 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
     @Resource
     private RedissonLockUtils redissonLockUtils;
 
-
     public MonthlySignRecordsServiceImpl(StringRedisTemplate stringRedisTemplate) {
         this.stringRedisTemplate = stringRedisTemplate;
     }
 
     /**
-     * 签到
+     * 用户签到
+     *
      * @param userId 用户Id
      * @return boolean
      */
     @Override
     public boolean sign(Long userId) {
-        // 生成 Redis 键
         String key = generateSignKey(userId, LocalDate.now());
-        // 获取当前日期是当前月的第几天。
         int dayOfMonth = LocalDate.now().getDayOfMonth();
 
-        if (!isSigned(userId, dayOfMonth)) {
-            // 用户未签到，执行签到操作
-            redissonLockUtils.redissonDistributedLocks(("sign" + userId).intern(), () -> {
-                stringRedisTemplate.opsForValue().setBit(key, dayOfMonth - 1, true);
-            }, "签到失败,请稍后重试");
-            // 获取当前用户的连续签到天数
-            String consecutiveSignKey = generateConsecutiveSignKey(userId);
-            Integer consecutiveSignDays = getConsecutiveSignDaysFromRedis(consecutiveSignKey);
-            // 更新连续签到天数
-            if (consecutiveSignDays == null || consecutiveSignDays == 0) {
-                consecutiveSignDays = 1;
-            } else {
-                // 判断昨天是否签到，是否是连续签到
-                boolean wasSignedYesterday = isSigned(userId, dayOfMonth - 1);
-                // 如果昨天签到，连续签到天数加 1，否则重置为 1
-                consecutiveSignDays = wasSignedYesterday ? consecutiveSignDays + 1 : 1;
-            }
-            String finalConsecutiveSignDays = consecutiveSignDays.toString();
-            // 将连续签到天数存入 Redis
-            stringRedisTemplate.opsForValue().set(consecutiveSignKey, finalConsecutiveSignDays, Duration.ofDays(2));
-            // 将签到信息同步到数据库
-            // 使用 CompletableFuture 异步执行同步操作
-            CompletableFuture.runAsync(() -> {
-                try {
-                    syncSignRecordToDB(userId, getCurrentMonthYear(), finalConsecutiveSignDays);
-                } catch (Exception e) {
-                    // 异步任务异常日志记录
-                    log.error("同步签到记录到数据库失败: 用户ID={}, 日期={}, {}", userId, getCurrentMonthYear(), e.getMessage());
-                }
-            });
-            return true;
-        } else {
+        if (isSigned(userId, dayOfMonth)) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "今日已签到");
         }
+
+        // 使用分布式锁保证原子性
+        redissonLockUtils.redissonDistributedLocks(("sign" + userId).intern(), () -> {
+            // 执行签到操作
+            stringRedisTemplate.opsForValue().setBit(key, dayOfMonth - 1, true);
+
+            // 更新连续签到天数
+            String consecutiveSignKey = generateConsecutiveSignKey(userId);
+            int consecutiveSignDays = calculateConsecutiveSignDays(userId, dayOfMonth, consecutiveSignKey);
+            stringRedisTemplate.opsForValue().set(consecutiveSignKey, String.valueOf(consecutiveSignDays), Duration.ofDays(2));
+
+            // 异步同步签到记录到数据库
+            CompletableFuture.runAsync(() -> syncSignRecordToDB(userId, getCurrentMonthYear(), String.valueOf(consecutiveSignDays)))
+                    .exceptionally(e -> {
+                        log.error("同步签到记录到数据库失败: 用户ID={}, 日期={}, {}", userId, getCurrentMonthYear(), e.getMessage());
+                        return null;
+                    });
+        }, "签到失败,请稍后重试");
+        log.info("用户 {} 签到成功，连续签到天数：{}", userId, getConsecutiveSignDaysFromRedis(generateConsecutiveSignKey(userId)));
+        return true;
     }
 
     /**
-     * 检查本月指定日期用户是否已经签到
+     * 检查用户是否已签到
+     *
      * @param userId 用户Id
-     * @param day 日期
+     * @param day    日期
      * @return boolean
      */
     @Override
@@ -104,61 +92,113 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
     }
 
     /**
-     * 将签到信息同步到数据库
-     * @param userId 用户Id
-     * @param signMonth 签到月份 (格式：yyyy-MM)
+     * 计算连续签到天数
+     *
+     * @param userId            用户Id
+     * @param dayOfMonth        当前日期
+     * @param consecutiveSignKey Redis 键
+     * @return int
+     */
+    private int calculateConsecutiveSignDays(Long userId, int dayOfMonth, String consecutiveSignKey) {
+        Integer consecutiveSignDays = getConsecutiveSignDaysFromRedis(consecutiveSignKey);
+        if (consecutiveSignDays == null || consecutiveSignDays == 0) {
+            return 1;
+        }
+
+        // 判断昨天是否签到
+        boolean wasSignedYesterday = false;
+        if (dayOfMonth > 1) {
+            // 如果是当月第 2 天及以后，直接检查昨天是否签到
+            wasSignedYesterday = isSigned(userId, dayOfMonth - 1);
+        } else {
+            // 如果是当月第 1 天，需要检查上个月的最后一天是否签到
+            LocalDate today = LocalDate.now();
+            LocalDate lastDayOfLastMonth = today.minusMonths(1).withDayOfMonth(today
+                    .minusMonths(1)
+                    .lengthOfMonth());
+            wasSignedYesterday = isSigned(userId, lastDayOfLastMonth.getDayOfMonth());
+        }
+
+        return wasSignedYesterday ? consecutiveSignDays + 1 : 1;
+    }
+
+    /**
+     * 同步签到记录到数据库
+     *
+     * @param userId              用户Id
+     * @param signMonth           签到月份 (格式：yyyy-MM)
+     * @param consecutiveSignDays 连续签到天数
      */
     private void syncSignRecordToDB(Long userId, String signMonth, String consecutiveSignDays) {
         String redisKey = generateSignKey(userId, LocalDate.now());
-        // 获取今天是本月的第几天
         int today = LocalDate.now().getDayOfMonth();
 
-        // 查询数据库是否已有记录
         QueryWrapper<MonthlySignRecords> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userId", userId).eq("signMonth", signMonth);
         MonthlySignRecords record = monthlySignRecordsMapper.selectOne(queryWrapper);
-        // 如果当月已有签到记录
+
         if (record != null) {
-            String existingSignStatus = record.getSignStatus();
-            // 在原记录上进行拼接操作
-            StringBuilder signStatusBuilder = new StringBuilder(existingSignStatus);
-            // 天数-1 对应Redis中BitMap的 偏移量
-            boolean isSignedToday = Boolean.TRUE.equals(stringRedisTemplate.opsForValue().getBit(redisKey, today - 1));
-            // 如果中间有 未签到 则补0
-            if (today > existingSignStatus.length()) {
-                // 如果最后一次记录的天数 小于 当前天数-1，说明除了今天外，期间有未签到
-                // 例如记录16号时 day=16，如果今天是18号， 16 < (18 - 1), 说明期间有一天没有签到，就 补0
-                for (int day = existingSignStatus.length(); day < today - 1; day++) {
-                    signStatusBuilder.append("0");
-                }
-            }
-            // 拼接今天到签到信息
-            // 例如今天是18号，那么之前记录的长度就是17，也就是记录的是 0～16，前17天签到数据
-            if (existingSignStatus.length() == today - 1) {
-                signStatusBuilder.append(isSignedToday ? "1" : "0");
-            }
-            record.setSignStatus(signStatusBuilder.toString());
-            record.setConsecutiveSignDays(consecutiveSignDays);
-            monthlySignRecordsMapper.update(record, queryWrapper);
+            updateExistingRecord(record, redisKey, today, consecutiveSignDays);
         } else {
-            StringBuilder signStatusBuilder = new StringBuilder();
-            // 如果没有现有记录，直接生成新的签到状态
-            for (int day = 1; day <= today; day++) {
-                boolean isSigned = Boolean.TRUE.equals(stringRedisTemplate.opsForValue().getBit(redisKey, day - 1));
-                signStatusBuilder.append(isSigned ? "1" : "0");
-            }
-            // 插入新记录
-            record = new MonthlySignRecords();
-            record.setUserId(userId);
-            record.setSignMonth(signMonth);
-            record.setSignStatus(signStatusBuilder.toString());
-            record.setConsecutiveSignDays(consecutiveSignDays);
-            monthlySignRecordsMapper.insert(record);
+            insertNewRecord(userId, signMonth, redisKey, today, consecutiveSignDays);
         }
     }
 
     /**
-     * 构建 Redis 的键，格式为 "sign{当前年月}{userId}"，用于存储用户的签到信息
+     * 更新现有签到记录
+     *
+     * @param record              现有记录
+     * @param redisKey            Redis 键
+     * @param today               当前日期
+     * @param consecutiveSignDays 连续签到天数
+     */
+    private void updateExistingRecord(MonthlySignRecords record, String redisKey, int today, String consecutiveSignDays) {
+        StringBuilder signStatusBuilder = new StringBuilder(record.getSignStatus());
+        boolean isSignedToday = Boolean.TRUE.equals(stringRedisTemplate.opsForValue().getBit(redisKey, today - 1));
+
+        // 补全未签到的天数
+        if (today > record.getSignStatus().length()) {
+            for (int day = record.getSignStatus().length(); day < today - 1; day++) {
+                signStatusBuilder.append("0");
+            }
+        }
+
+        // 更新今天的签到状态
+        if (record.getSignStatus().length() == today - 1) {
+            signStatusBuilder.append(isSignedToday ? "1" : "0");
+        }
+
+        record.setSignStatus(signStatusBuilder.toString());
+        record.setConsecutiveSignDays(consecutiveSignDays);
+        monthlySignRecordsMapper.updateById(record);
+    }
+
+    /**
+     * 插入新的签到记录
+     *
+     * @param userId              用户Id
+     * @param signMonth           签到月份
+     * @param redisKey            Redis 键
+     * @param today               当前日期
+     * @param consecutiveSignDays 连续签到天数
+     */
+    private void insertNewRecord(Long userId, String signMonth, String redisKey, int today, String consecutiveSignDays) {
+        StringBuilder signStatusBuilder = new StringBuilder();
+        for (int day = 1; day <= today; day++) {
+            boolean isSigned = Boolean.TRUE.equals(stringRedisTemplate.opsForValue().getBit(redisKey, day - 1));
+            signStatusBuilder.append(isSigned ? "1" : "0");
+        }
+
+        MonthlySignRecords record = new MonthlySignRecords();
+        record.setUserId(userId);
+        record.setSignMonth(signMonth);
+        record.setSignStatus(signStatusBuilder.toString());
+        record.setConsecutiveSignDays(consecutiveSignDays);
+        monthlySignRecordsMapper.insert(record);
+    }
+
+    /**
+     * 生成 Redis 键
      *
      * @param userId    用户Id
      * @param signMonth 日期
@@ -169,56 +209,37 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
     }
 
     /**
-     * 获取当前的日期
+     * 获取当前年月
+     *
      * @return String
      */
     private String getCurrentMonthYear() {
         return LocalDate.now().format(DateTimeFormatter.ofPattern(SignConstant.DATE_FORMAT));
     }
 
-
-    /**
-     * 计算日期的偏移量
-     * @param date 日期
-     * @return int
-     */
-    private int getOffset(LocalDate date) {
-        // 计算从本月第一天开始到指定日期的天数差，然后转换为偏移量
-        // 如果 date 是 2025 年 1 月 17 日，date.toEpochDay() 会返回一个表示从 1970 年 1 月 1 日到 2025 年 1 月 17 日的天数
-        // 如果 date 是 2025 年 1 月 17 日，date.withDayOfMonth(1) 将返回一个表示 2025 年 1 月 1 日的 LocalDate 对象
-        return (int) (date.toEpochDay() - date.withDayOfMonth(1).toEpochDay());
-    }
-
-
     /**
      * 计算用户累计签到天数
+     *
      * @param userId 用户Id
      * @return int
      */
     @Override
     public int countTotalSignDays(Long userId) {
-        // 查询该用户的所有签到记录
         List<MonthlySignRecords> records = monthlySignRecordsMapper
                 .selectList(new QueryWrapper<MonthlySignRecords>().eq("userId", userId));
-        int totalSignDays = 0;
-        // 遍历每个月的签到记录
-        for (MonthlySignRecords record : records) {
-            String signStatus = record.getSignStatus();
-            if (signStatus != null) {
-                // 统计该月份签到的天数
-                for (char c : signStatus.toCharArray()) {
-                    if (c == '1') {
-                        totalSignDays++;
-                    }
-                }
-            }
-        }
-        return totalSignDays;
+        return records.stream()
+                .mapToInt(record ->
+                        (int) record.getSignStatus()
+                                .chars()
+                                .filter(c -> c == '1')
+                                .count())
+                .sum();
     }
 
     /**
-     * 从Redis中获取用户连续签到的数据
-     * @param consecutiveSignKey 键
+     * 从 Redis 中获取连续签到天数
+     *
+     * @param consecutiveSignKey Redis 键
      * @return Integer
      */
     @Override
@@ -228,16 +249,12 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
     }
 
     /**
-     * 生成存储 用户连续签到 的键
+     * 生成连续签到 Redis 键
+     *
      * @param userId 用户Id
      * @return String
      */
     private String generateConsecutiveSignKey(Long userId) {
-        // Redis 键前缀
         return SignConstant.CONSECUTIVE_SIGN_PREFIX + userId + SignConstant.CONSECUTIVE_SIGN_DAYS;
     }
 }
-
-
-
-
