@@ -38,11 +38,23 @@ public class InterfaceInfo implements Serializable {
 
     /**
      * 请求参数
-     * [
-     *   {"name": "username", "type": "string"}
-     * ]
      */
     private String requestParams;
+
+    /**
+     * 响应参数
+     */
+    private String responseParams;
+
+    /**
+     * 返回格式(JSON等等)
+     */
+    private String returnFormat;
+
+    /**
+     * 请求示例
+     */
+    private String requestExample;
 
     /**
      * 请求头
@@ -55,7 +67,7 @@ public class InterfaceInfo implements Serializable {
     private String responseHeader;
 
     /**
-     * 接口状态（0-关闭，1-开启）
+     * 接口状态 （0-关闭， 1-开启）
      */
     private Integer status;
 
@@ -70,6 +82,21 @@ public class InterfaceInfo implements Serializable {
     private Long userId;
 
     /**
+     * 接口头像
+     */
+    private String avatarUrl;
+
+    /**
+     * 接口总调用次数
+     */
+    private Long totalInvokes;
+
+    /**
+     * 扣除积分数
+     */
+    private Long reduceScore;
+
+    /**
      * 创建时间
      */
     private Date createTime;
@@ -82,7 +109,6 @@ public class InterfaceInfo implements Serializable {
     /**
      * 是否删除(0-未删, 1-已删)
      */
-    @TableLogic
     private Integer isDeleted;
 
     @TableField(exist = false)
