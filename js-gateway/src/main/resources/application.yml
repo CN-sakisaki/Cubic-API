@@ -13,6 +13,10 @@ spring:
           #定义路由匹配的条件
           predicates:
             - Path=/api/**
+  redis:
+    host: localhost
+    port: 6379
+    database: 4
 logging:
   level:
     org:
