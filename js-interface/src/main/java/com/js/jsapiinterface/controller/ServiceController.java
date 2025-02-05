@@ -4,6 +4,7 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.js.jsapiclientsdk.exception.ApiException;
 import com.js.jsapiclientsdk.model.param.*;
+import com.js.jsapiclientsdk.model.response.AppointWallpaperResponse;
 import com.js.jsapiclientsdk.model.response.NameResponse;
 import com.js.jsapiclientsdk.model.response.RandomWallpaperResponse;
 import com.js.jsapiclientsdk.model.response.ResultResponse;
@@ -43,6 +44,22 @@ public class ServiceController {
     public String getPoisonousChickenSoup() {
         return get("https://api.btstu.cn/yan/api.php?charset=utf-8&encode=json");
     }
+    @GetMapping("/loversPrattle")
+    public String getLoversPrattle() {
+        return get("https://api.zxki.cn/api/twqh");
+    }
+
+    // @GetMapping("/appointWallpaper")
+    // public AppointWallpaperResponse appointWallpaper(AppointWallpaperParams appointWallpaperParams) throws ApiException {
+    //     String baseUrl = "https://wp.upx8.com/api.php";
+    //     String url = buildUrl(baseUrl, appointWallpaperParams);
+    //     // if (StringUtils.isAllBlank(appointWallpaperParams.getContent())) {
+    //     //     url = url + "?format=json";
+    //     // } else {
+    //     //     url = url + "&format=json";
+    //     // }
+    //     return JSONUtil.toBean(get(url), AppointWallpaperResponse.class);
+    // }
 
     @GetMapping("/randomWallpaper")
     public RandomWallpaperResponse randomWallpaper(RandomWallpaperParams randomWallpaperParams) throws ApiException {
@@ -58,15 +75,15 @@ public class ServiceController {
 
     @GetMapping("/horoscope")
     public ResultResponse getHoroscope(HoroscopeParams horoscopeParams) throws ApiException {
-        String response = get("https://api.vvhan.com/api/horoscope", horoscopeParams);
+        String response = get("https://v2.xxapi.cn/api/horoscope", horoscopeParams);
         Map<String, Object> fromResponse = responseToMap(response);
-        boolean success = (boolean) fromResponse.get("success");
-        if (!success) {
-            ResultResponse baseResponse = new ResultResponse();
-            baseResponse.setData(fromResponse);
-            return baseResponse;
-        }
-        return JSONUtil.toBean(response, ResultResponse.class);
+        // boolean success = (boolean) fromResponse.get("request_id");
+        fromResponse.remove("msg");
+        fromResponse.remove("request_id");
+        fromResponse.remove("code");
+        ResultResponse baseResponse = new ResultResponse();
+        baseResponse.setData(fromResponse);
+        return baseResponse;
     }
 
     @GetMapping("/ipInfo")
