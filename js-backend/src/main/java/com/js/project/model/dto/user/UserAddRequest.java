@@ -29,6 +29,11 @@ public class UserAddRequest implements Serializable {
     private String userAvatar;
 
     /**
+     * 邮箱
+     */
+    private String email;
+
+    /**
      * 性别
      */
     private Integer gender;
