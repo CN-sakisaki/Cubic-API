@@ -5,25 +5,31 @@
 <mapper namespace="com.js.project.mapper.InterfaceInfoMapper">
 
     <resultMap id="BaseResultMap" type="com.js.jsapicommon.model.entity.InterfaceInfo">
-            <id property="id" column="id" jdbcType="BIGINT"/>
-            <result property="name" column="name" jdbcType="VARCHAR"/>
-            <result property="description" column="description" jdbcType="VARCHAR"/>
-            <result property="url" column="url" jdbcType="VARCHAR"/>
-            <result property="requestParams" column="requestParams" jdbcType="VARCHAR"/>
-            <result property="requestHeader" column="requestHeader" jdbcType="VARCHAR"/>
-            <result property="responseHeader" column="responseHeader" jdbcType="VARCHAR"/>
-            <result property="status" column="status" jdbcType="INTEGER"/>
-            <result property="method" column="method" jdbcType="VARCHAR"/>
-            <result property="userId" column="userId" jdbcType="BIGINT"/>
-            <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
-            <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
-            <result property="isDeleted" column="isDeleted" jdbcType="TINYINT"/>
+        <id property="id" column="id" />
+        <result property="name" column="name" />
+        <result property="description" column="description" />
+        <result property="url" column="url" />
+        <result property="requestParams" column="requestParams" />
+        <result property="responseParams" column="responseParams" />
+        <result property="returnFormat" column="returnFormat" />
+        <result property="requestExample" column="requestExample" />
+        <result property="requestHeader" column="requestHeader" />
+        <result property="responseHeader" column="responseHeader" />
+        <result property="status" column="status" />
+        <result property="method" column="method" />
+        <result property="userId" column="userId" />
+        <result property="avatarUrl" column="avatarUrl" />
+        <result property="totalInvokes" column="totalInvokes" />
+        <result property="reduceScore" column="reduceScore" />
+        <result property="createTime" column="createTime" />
+        <result property="updateTime" column="updateTime" />
+        <result property="isDeleted" column="isDeleted" />
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,name,description,
-        url,requestParams,requestHeader,responseHeader,
-        status,method,userId,
+        id,name,description,url,requestParams,responseParams,
+        returnFormat,requestExample,requestHeader,responseHeader,status,
+        method,userId,avatarUrl,totalInvokes,reduceScore,
         createTime,updateTime,isDeleted
     </sql>
 </mapper>
