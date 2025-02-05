@@ -18,7 +18,6 @@ import {
 } from '@ant-design/pro-components';
 import '@umijs/max';
 import { Button, Drawer, message } from 'antd';
-import { SortOrder } from 'antd/lib/table/interface';
 import React, { useRef, useState } from 'react';
 
 const TableList: React.FC = () => {
@@ -44,11 +43,9 @@ const TableList: React.FC = () => {
    * @zh-CN 添加节点
    * @param fields
    */
-  // 把参数的类型改成InterfaceInfo
-  const handleAdd = async (fields: API.InterfaceInfo) => {
+  const handleAdd = async (fields: API.InterfaceInfoAddRequest) => {
     const hide = message.loading('正在添加');
     try {
-      // 把addRule改成addInterfaceInfoUsingPOST
       await addInterfaceInfoUsingPost({
         ...fields,
       });
@@ -69,10 +66,9 @@ const TableList: React.FC = () => {
   /**
    * @en-US Update node
    * @zh-CN 更新节点
-   *
    * @param fields
    */
-  const handleUpdate = async (fields: API.InterfaceInfo) => {
+  const handleUpdate = async (fields: API.InterfaceInfoUpdateRequest) => {
     if (!currentRow) {
       return;
     }
@@ -95,16 +91,15 @@ const TableList: React.FC = () => {
   /**
    *  Delete node
    * @zh-CN 删除节点
-   *
    * @param record
    */
-  const handleRemove = async (record: API.InterfaceInfo[]) => {
+  const handleRemove = async (record: API.DeleteRequest[]) => {
     const hide = message.loading('正在删除');
     if (!record) return true;
     try {
       await deleteInterfaceInfoUsingPost({
-        // 拿到id就能删除数据
-        id: record.id,
+        // 拿到idList就能删除数据
+        idList: [record],
       });
       hide();
       message.success('删除成功');
@@ -121,7 +116,6 @@ const TableList: React.FC = () => {
   /**
    *  public node
    * @zh-CN 发布节点
-   *
    * @param record
    */
   const handleOnline = async (record: API.IdRequest[]) => {
@@ -130,7 +124,7 @@ const TableList: React.FC = () => {
     try {
       await onlineInterfaceInfoUsingPost({
         // 拿到id就能删除数据
-        id: record.id,
+        id: record,
       });
       hide();
       message.success('操作成功');
@@ -156,7 +150,7 @@ const TableList: React.FC = () => {
     try {
       await offlineInterfaceInfoUsingPost({
         // 拿到id就能删除数据
-        id: record.id,
+        id: record,
       });
       hide();
       message.success('操作成功');
@@ -181,7 +175,7 @@ const TableList: React.FC = () => {
       valueType: 'index',
     },
     {
-      title: '规则名称',
+      title: '接口名称',
       dataIndex: 'name',
       valueType: 'text',
       formItemProps: {
@@ -217,16 +211,19 @@ const TableList: React.FC = () => {
     {
       title: '请求参数',
       dataIndex: 'requestParams',
+      hideInSearch: true,
       valueType: 'jsonCode',
     },
     {
       title: '请求头',
       dataIndex: 'requestHeader',
+      hideInSearch: true,
       valueType: 'jsonCode',
     },
     {
       title: '响应头',
       dataIndex: 'responseHeader',
+      hideInSearch: true,
       valueType: 'jsonCode',
     },
     {
@@ -248,12 +245,7 @@ const TableList: React.FC = () => {
       title: '创建时间',
       dataIndex: 'createTime',
       valueType: 'dateTime',
-      hideInForm: true,
-    },
-    {
-      title: '更新时间',
-      dataIndex: 'updateTime',
-      valueType: 'dateTime',
+      hideInSearch: true,
       hideInForm: true,
     },
     {
@@ -276,7 +268,7 @@ const TableList: React.FC = () => {
           <a
             key="online"
             onClick={() => {
-              handleOnline(record);
+              handleOnline(record.id);
             }}
           >
             发布
@@ -289,7 +281,7 @@ const TableList: React.FC = () => {
             danger
             key="offline"
             onClick={() => {
-              handleOffline(record);
+              handleOffline(record.id);
             }}
           >
             下线
@@ -301,7 +293,7 @@ const TableList: React.FC = () => {
           danger
           key="delete"
           onClick={() => {
-            handleRemove(record);
+            handleRemove(record.id);
           }}
         >
           删除
@@ -311,7 +303,7 @@ const TableList: React.FC = () => {
   ];
   return (
     <PageContainer>
-      <ProTable<API.RuleListItem, API.PageParams>
+      <ProTable<API.listInterfaceInfoByPageUsingGETParams>
         headerTitle={'查询表格'}
         actionRef={actionRef}
         rowKey={(record) => record.id.toString()} // 确保每行有唯一的键值
@@ -329,17 +321,12 @@ const TableList: React.FC = () => {
             <PlusOutlined /> 新建
           </Button>,
         ]}
-        request={async (
-          params,
-          sort: Record<string, SortOrder>,
-          filter: Record<string, React.ReactText[] | null>,
-        ) => {
-          const pageSize = 30;
-          // const currentPage = params.current || 1;
-          const currentPage = 1;
+        request={async (params, sorter, filter) => {
+          const pageSize = params.pageSize || 30; // 使用默认值或用户指定的页面大小
+          const currentPage = params.current || 1; // 使用默认值或用户指定的当前页码
           const res = await listInterfaceInfoByPageUsingGet({
             ...params,
-            pageSize,
+            pageSize: pageSize,
             current: currentPage, // 当前页码
           });
           // 如果后端请求给你返回了接口信息
@@ -347,7 +334,7 @@ const TableList: React.FC = () => {
             return {
               data: res?.data.records || [],
               success: true,
-              total: res.total,
+              total: res?.data.total,
             };
           } else {
             // 如果数据不存在，返回一个空数组，失败状态和零总数
@@ -443,7 +430,7 @@ const TableList: React.FC = () => {
         closable={false}
       >
         {currentRow?.name && (
-          <ProDescriptions<API.RuleListItem>
+          <ProDescriptions<API.InterfaceInfo>
             column={2}
             title={currentRow?.name}
             request={async () => ({
@@ -452,7 +439,7 @@ const TableList: React.FC = () => {
             params={{
               id: currentRow?.name,
             }}
-            columns={columns as ProDescriptionsItemProps<API.RuleListItem>[]}
+            columns={columns as ProDescriptionsItemProps<API.InterfaceInfo>[]}
           />
         )}
       </Drawer>
