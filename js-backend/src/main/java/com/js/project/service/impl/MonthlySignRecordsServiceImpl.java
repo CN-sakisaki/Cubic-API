@@ -164,8 +164,8 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
         }
 
         // 更新今天的签到状态
-        if (record.getSignStatus().length() == today - 1) {
-            signStatusBuilder.append(isSignedToday ? "1" : "0");
+        if (signStatusBuilder.length() == today - 1 && isSignedToday) {
+            signStatusBuilder.append("1");
         }
 
         record.setSignStatus(signStatusBuilder.toString());
