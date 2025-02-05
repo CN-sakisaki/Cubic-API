@@ -44,7 +44,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     private static final String SALT = "js";
 
     @Override
-    public long userRegister(String userAccount, String userPassword, String checkPassword) {
+    public long userRegister(String userAccount, String email, String userPassword, String checkPassword) {
         // 1. 校验
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
@@ -75,6 +75,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             // 4. 插入数据
             User user = new User();
             user.setUserAccount(userAccount);
+            user.setEmail(email);
             user.setUserPassword(encryptPassword);
             user.setAccessKey(accessKey);
             user.setSecretKey(secretKey);

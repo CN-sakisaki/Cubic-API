@@ -83,22 +83,23 @@ public class UserInterfaceInfoController {
     @PostMapping("/delete")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> deleteUserInterfaceInfo(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
-        if (deleteRequest == null || deleteRequest.getId() <= 0) {
+        List<Long> idList = deleteRequest.getIdList();
+        if (idList.isEmpty()) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User user = userService.getLoginUser(request);
-        long id = deleteRequest.getId();
         // 判断是否存在
-        UserInterfaceInfo oldUserInterfaceInfo = userInterfaceInfoService.getById(id);
-        if (oldUserInterfaceInfo == null) {
+        List<UserInterfaceInfo> userInterfaceInfoList = userInterfaceInfoService.listByIds(idList);
+        if (userInterfaceInfoList == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
-        // 仅本人或管理员可删除
-        if (!oldUserInterfaceInfo.getUserId().equals(user.getId()) && !userService.isAdmin(request)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        for (UserInterfaceInfo userInterfaceInfo : userInterfaceInfoList) {
+            // 仅本人或管理员可删除
+            if (!userInterfaceInfo.getUserId().equals(user.getId()) || !userService.isAdmin(request)) {
+                throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+            }
         }
-        boolean b = userInterfaceInfoService.removeById(id);
-        return ResultUtils.success(b);
+        return ResultUtils.success(userInterfaceInfoService.removeByIds(userInterfaceInfoList));
     }
 
     /**
