@@ -87,7 +87,7 @@ export async function userLoginUsingPost(
   body: API.UserLoginRequest,
   options?: { [key: string]: any },
 ) {
-  return request<API.BaseResponseUser>('/api/user/login', {
+  return request<API.BaseResponseUserVO>('/api/user/login', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
