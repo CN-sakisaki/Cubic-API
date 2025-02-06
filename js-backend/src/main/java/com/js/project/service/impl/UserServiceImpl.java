@@ -6,22 +6,33 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.js.jsapicommon.model.entity.User;
 import com.js.project.common.ErrorCode;
+import com.js.project.config.EmailConfig;
 import com.js.project.exception.BusinessException;
 import com.js.project.mapper.UserMapper;
 import com.js.project.model.vo.UserVO;
 import com.js.project.service.UserService;
-
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import javax.annotation.Resource;
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
 import javax.servlet.http.HttpServletRequest;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
+import static com.js.project.constant.EmailConstant.*;
 import static com.js.project.constant.UserConstant.ADMIN_ROLE;
 import static com.js.project.constant.UserConstant.USER_LOGIN_STATE;
+import static com.js.project.utils.EmailUtil.buildEmailContent;
 
 
 /**
@@ -38,10 +49,25 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Resource
     private UserMapper userMapper;
 
+    @Resource
+    private JavaMailSender mailSender;
+
+    @Resource
+    private EmailConfig emailConfig;
+
+    @Resource
+    private RedissonClient redissonClient;
+
+    private final StringRedisTemplate stringRedisTemplate;
+
     /**
      * 盐值，混淆密码
      */
     private static final String SALT = "js";
+
+    public UserServiceImpl(StringRedisTemplate stringRedisTemplate) {
+        this.stringRedisTemplate = stringRedisTemplate;
+    }
 
     @Override
     public long userRegister(String userAccount, String email, String userPassword, String checkPassword) {
@@ -171,6 +197,56 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return true;
     }
 
+    /**
+     * 获取验证码
+     * @param userEmail 邮箱帐号
+     * @return boolean
+     */
+    @Override
+    public boolean getCaptcha(String userEmail) {
+        String emailPattern = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+        if (!Pattern.matches(emailPattern, userEmail)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "不合法的邮箱地址！");
+        }
+        String captcha = RandomUtil.randomNumbers(6);
+        RLock lock = redissonClient.getLock("captcha:" + userEmail);
+        try {
+            // 尝试获取锁，等待时间为5秒
+            if (lock.tryLock(5, TimeUnit.SECONDS)) {
+                try {
+                    sendEmail(userEmail, captcha);
+                    stringRedisTemplate.opsForValue().set(CAPTCHA_CACHE_KEY + userEmail, captcha, 5, TimeUnit.MINUTES);
+                    return true;
+                } catch (Exception e) {
+                    throw new BusinessException(ErrorCode.OPERATION_ERROR, "验证码获取失败");
+                } finally {
+                    lock.unlock();
+                }
+            } else {
+                log.warn("无法获取锁，可能正在处理其他请求");
+                return false;
+            }
+        } catch (Exception e) {
+            log.error("【发送验证码失败】{}", e.getMessage());
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "验证码获取失败");
+        }
+    }
+
+    /**
+     * 发送邮件
+     * @param emailAccount 邮箱
+     * @param captcha 验证码
+     */
+    private void sendEmail(String emailAccount, String captcha) throws MessagingException {
+        MimeMessage message = mailSender.createMimeMessage();
+        // 邮箱发送内容组成
+        MimeMessageHelper helper = new MimeMessageHelper(message, true);
+        helper.setSubject(EMAIL_SUBJECT);
+        helper.setText(buildEmailContent(EMAIL_HTML_CONTENT_PATH, captcha), true);
+        helper.setTo(emailAccount);
+        helper.setFrom(EMAIL_TITLE + '<' + emailConfig.getEmailFrom() + '>');
+        mailSender.send(message);
+    }
 }
 
 

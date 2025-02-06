@@ -16,6 +16,7 @@ import com.js.project.exception.BusinessException;
 import com.js.project.model.dto.user.*;
 import com.js.project.model.vo.UserVO;
 import com.js.project.service.UserService;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.DigestUtils;
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/user")
+@Slf4j
 public class UserController {
 
     @Resource
@@ -119,6 +121,22 @@ public class UserController {
         BeanUtils.copyProperties(user, userVO);
         return ResultUtils.success(userVO);
     }
+
+    /**
+     * 获取验证码
+     *
+     * @param userEmailRequest 电子邮件帐户
+     * @return {@link BaseResponse}<{@link String}>
+     */
+    @PostMapping("/getCaptcha")
+    public BaseResponse<Boolean> getCaptcha(UserEmailRequest userEmailRequest) {
+        if (StringUtils.isBlank(userEmailRequest.getEmailAccount())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        boolean result = userService.getCaptcha(userEmailRequest.getEmailAccount());
+        return ResultUtils.success(result);
+    }
+
 
     // endregion
 

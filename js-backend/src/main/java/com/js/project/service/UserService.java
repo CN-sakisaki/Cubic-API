@@ -3,6 +3,7 @@ package com.js.project.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.js.jsapicommon.model.entity.User;
+import com.js.project.model.dto.user.UserEmailRequest;
 import com.js.project.model.vo.UserVO;
 
 
@@ -59,4 +60,11 @@ public interface UserService extends IService<User> {
      * @return
      */
     boolean userLogout(HttpServletRequest request);
+
+    /**
+     * 获取验证码
+     * @param userEmailRequest
+     * @return boolean
+     */
+    boolean getCaptcha(String userEmail);
 }

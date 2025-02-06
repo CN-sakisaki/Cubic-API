@@ -19,6 +19,16 @@ spring:
     port: 6379
     host: localhost
     database: 0
+  mail:
+    host: smtp.qq.com
+    username: 189444236@qq.com
+    password: fiqjqiwwgwrvbgbe
+    emailFrom: 189444236@qq.com
+    properties:
+      mail:
+        smtp:
+          ssl:
+            enable: true
 server:
   port: 7529
   servlet:
