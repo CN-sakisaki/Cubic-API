@@ -219,12 +219,14 @@ const TableList: React.FC = () => {
       dataIndex: 'requestHeader',
       hideInSearch: true,
       valueType: 'jsonCode',
+      hideInTable: true,
     },
     {
       title: '响应头',
       dataIndex: 'responseHeader',
       hideInSearch: true,
       valueType: 'jsonCode',
+      hideInTable: true,
     },
     {
       title: '状态',

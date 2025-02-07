@@ -51,8 +51,8 @@ const Index: React.FC = () => {
   const [totalInvokes, setTotalInvokes] = useState<number>(0);
   const [javaCode, setJavaCode] = useState<any>();
   const [returnCode, setReturnCode] = useState<any>(returnExample);
-  const docUrl =
-    process.env.NODE_ENV === 'production' ? 'https://doc.qimuu.icu' : 'http://localhost:8080';
+  // const docUrl =
+  //   process.env.NODE_ENV === 'production' ? 'https://doc.qimuu.icu' : 'http://localhost:8080';
   const { initialState } = useModel('@@initialState');
   const { loginUser } = initialState || {};
   const loadedData = async () => {
@@ -232,9 +232,9 @@ const Index: React.FC = () => {
           <Descriptions.Item key={'returnFormat'} label="返回格式">
             {data?.returnFormat ?? 'JSON'}
           </Descriptions.Item>
-          <Descriptions.Item key={'reduceScore'} label="消费积分">
-            {data?.reduceScore}个
-          </Descriptions.Item>
+          {/*<Descriptions.Item key={'reduceScore'} label="消费积分">*/}
+          {/*  {data?.reduceScore}个*/}
+          {/*</Descriptions.Item>*/}
           <Descriptions.Item key={'request'} label="请求方式">
             {' '}
             <Tag color={InterfaceRequestMethodEnum[data?.method ?? 'default']}>{data?.method}</Tag>
@@ -267,12 +267,12 @@ const Index: React.FC = () => {
           </Descriptions.Item>
         </Descriptions>
       </Card>
-      <Card>
-        <p className="highlightLine">接口详细描述请前往开发者在线文档查看：</p>
-        <a href={`${docUrl}/pages/${data?.id}/#${data?.name}`} target={'_blank'} rel="noreferrer">
-          📘 接口在线文档：{data?.name}
-        </a>
-      </Card>
+      {/*<Card>*/}
+      {/*  <p className="highlightLine">接口详细描述请前往开发者在线文档查看：</p>*/}
+      {/*  <a href={`${docUrl}/pages/${data?.id}/#${data?.name}`} target={'_blank'} rel="noreferrer">*/}
+      {/*    📘 接口在线文档：{data?.name}*/}
+      {/*  </a>*/}
+      {/*</Card>*/}
       <br />
       <Card
         style={{ width: '100%' }}
