@@ -30,6 +30,7 @@ import javax.annotation.Resource;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 import javax.servlet.http.HttpServletRequest;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -161,7 +162,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         String emailAccount = userEmailLoginRequest.getEmailAccount();
         String captcha = userEmailLoginRequest.getCaptcha();
 
-        validateEmailAndCaptcha(emailAccount,captcha);
+        validateEmailAndCaptcha(emailAccount, captcha);
         // 查询用户是否存在
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("email", emailAccount);
@@ -235,6 +236,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         boolean bindEmailResult = this.updateById(user);
         if (!bindEmailResult) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "邮箱解绑失败,请稍后再试！");
+        }
+        UserVO userVO = new UserVO();
+        BeanUtils.copyProperties(user, userVO);
+        return userVO;
+    }
+
+    @Override
+    public UserVO updateVoucher(User user) {
+        String accessKey = DigestUtil.md5Hex(SALT + user.getUserAccount() + RandomUtil.randomNumbers(5));
+        String secretKey = DigestUtil.md5Hex(SALT + user.getUserAccount() + RandomUtil.randomNumbers(8));
+        user.setAccessKey(accessKey);
+        user.setSecretKey(secretKey);
+        boolean result = this.updateById(user);
+        if (!result) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR);
         }
         UserVO userVO = new UserVO();
         BeanUtils.copyProperties(user, userVO);

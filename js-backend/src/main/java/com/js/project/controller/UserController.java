@@ -257,6 +257,18 @@ public class UserController {
         return ResultUtils.success(result);
     }
 
+    @PostMapping("/update/voucher")
+    public BaseResponse<UserVO> updateVoucher(HttpServletRequest request) {
+        if (request == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        User user = new User();
+        BeanUtils.copyProperties(loginUser, user);
+        UserVO userVO = userService.updateVoucher(user);
+        return ResultUtils.success(userVO);
+    }
+
     /**
      * 根据 id 获取用户
      *

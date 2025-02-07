@@ -83,4 +83,11 @@ public interface UserService extends IService<User> {
     UserVO userBindEmail(UserBindEmailRequest userBindEmailRequest, HttpServletRequest request);
 
     UserVO userUnBindEmail(UserUnBindEmailRequest userUnBindEmailRequest, HttpServletRequest request);
+
+    /**
+     * 更新凭证
+     * @param user
+     * @return UserVO
+     */
+    UserVO updateVoucher(User user);
 }
