@@ -9,6 +9,10 @@ import com.js.project.common.ErrorCode;
 import com.js.project.config.EmailConfig;
 import com.js.project.exception.BusinessException;
 import com.js.project.mapper.UserMapper;
+import com.js.project.model.dto.user.UserBindEmailRequest;
+import com.js.project.model.dto.user.UserEmailLoginRequest;
+import com.js.project.model.dto.user.UserUnBindEmailRequest;
+import com.js.project.model.enums.UserAccountStatusEnum;
 import com.js.project.model.vo.UserVO;
 import com.js.project.service.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -146,6 +150,121 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     /**
+     * 用户电子邮件登录
+     *
+     * @param userEmailLoginRequest 用户电子邮件登录请求
+     * @param request               要求
+     * @return {@link UserVO}
+     */
+    @Override
+    public UserVO userEmailLogin(UserEmailLoginRequest userEmailLoginRequest, HttpServletRequest request) {
+        String emailAccount = userEmailLoginRequest.getEmailAccount();
+        String captcha = userEmailLoginRequest.getCaptcha();
+
+        validateEmailAndCaptcha(emailAccount,captcha);
+        // 查询用户是否存在
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("email", emailAccount);
+        User user = userMapper.selectOne(queryWrapper);
+
+        // 用户不存在
+        if (user == null) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "该邮箱未绑定账号，请先绑定账号");
+        }
+
+        if (user.getStatus().equals(UserAccountStatusEnum.BAN.getValue())) {
+            throw new BusinessException(ErrorCode.PROHIBITED);
+        }
+        UserVO userVO = new UserVO();
+        BeanUtils.copyProperties(user, userVO);
+        // 3. 记录用户的登录态
+        request.getSession().setAttribute(USER_LOGIN_STATE, userVO);
+        return userVO;
+    }
+
+    /**
+     * 绑定邮箱
+     * @param userBindEmailRequest 绑定请求类
+     * @return UserVO
+     */
+    @Override
+    public UserVO userBindEmail(UserBindEmailRequest userBindEmailRequest, HttpServletRequest request) {
+        String emailAccount = userBindEmailRequest.getEmailAccount();
+        String captcha = userBindEmailRequest.getCaptcha();
+        validateEmailAndCaptcha(emailAccount, captcha);
+
+        // 查询用户是否绑定该邮箱
+        User loginUser = this.getLoginUser(request);
+        if (!loginUser.getEmail().isEmpty() || emailAccount.equals(loginUser.getEmail())) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "该账号已绑定邮箱,请先解绑邮箱！");
+        }
+        // 查询邮箱是否已经绑定
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("email", emailAccount);
+        User user = this.getOne(queryWrapper);
+        if (user != null) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "此邮箱已被绑定,请更换新的邮箱！");
+        }
+        loginUser.setEmail(emailAccount);
+        boolean bindEmailResult = this.updateById(loginUser);
+        if (!bindEmailResult) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "邮箱绑定失败,请稍后再试！");
+        }
+        UserVO userVO = new UserVO();
+        BeanUtils.copyProperties(loginUser, userVO);
+        return userVO;
+    }
+
+    /**
+     * 解绑邮箱
+     * @param userUnBindEmailRequest 解绑请求类
+     * @return UserVO
+     */
+    @Override
+    public UserVO userUnBindEmail(UserUnBindEmailRequest userUnBindEmailRequest, HttpServletRequest request) {
+        String emailAccount = userUnBindEmailRequest.getEmailAccount();
+        String captcha = userUnBindEmailRequest.getCaptcha();
+        validateEmailAndCaptcha(emailAccount, captcha);
+
+        // 查询用户是否绑定该邮箱
+        User user = this.getLoginUser(request);
+        if (user.getEmail() == null) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "该账号未绑定邮箱");
+        }
+        user.setEmail("");
+        boolean bindEmailResult = this.updateById(user);
+        if (!bindEmailResult) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "邮箱解绑失败,请稍后再试！");
+        }
+        UserVO userVO = new UserVO();
+        BeanUtils.copyProperties(user, userVO);
+        return userVO;
+    }
+
+    /**
+     * 验证邮箱与验证码
+     * @param emailAccount 邮箱帐号
+     * @param captcha 验证码
+     */
+    private void validateEmailAndCaptcha(String emailAccount, String captcha) {
+        if (StringUtils.isAnyBlank(emailAccount, captcha)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        String emailPattern = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+        if (!Pattern.matches(emailPattern, emailAccount)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "不合法的邮箱地址！");
+        }
+        String cacheCaptcha = stringRedisTemplate.opsForValue().get(CAPTCHA_CACHE_KEY + emailAccount);
+        if (StringUtils.isBlank(cacheCaptcha)) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "验证码已过期,请重新获取");
+        }
+        captcha = captcha.trim();
+        if (!cacheCaptcha.equals(captcha)) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "验证码输入有误");
+        }
+    }
+
+    /**
      * 获取当前登录用户
      *
      * @param request
@@ -208,6 +327,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if (!Pattern.matches(emailPattern, userEmail)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "不合法的邮箱地址！");
         }
+        stringRedisTemplate.delete(CAPTCHA_CACHE_KEY + userEmail);
         String captcha = RandomUtil.randomNumbers(6);
         RLock lock = redissonClient.getLock("captcha:" + userEmail);
         try {
