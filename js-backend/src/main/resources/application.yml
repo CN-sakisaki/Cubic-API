@@ -29,6 +29,13 @@ spring:
         smtp:
           ssl:
             enable: true
+cos:
+  client:
+    accessKey: AKIDUpwnOoysWu2vYv3vXtzoNgjV3LOBiz1n
+    secretKey: XnoY1D9pFOGsEK9i25rMaYFeojNkskiQ
+    region: ap-guangzhou
+    bucket: cubic-api-1327981841
+    cos-host: https://cubic-api-1327981841.cos.ap-guangzhou.myqcloud.com
 server:
   port: 7529
   servlet:
