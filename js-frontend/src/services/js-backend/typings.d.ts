@@ -5,6 +5,12 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponseImageVo = {
+    code?: number;
+    data?: ImageVo;
+    message?: string;
+  };
+
   type BaseResponseint = {
     code?: number;
     data?: number;
@@ -92,6 +98,10 @@ declare namespace API {
     value?: string;
   };
 
+  type getCaptchaUsingPOSTParams = {
+    emailAccount?: string;
+  };
+
   type getInterfaceInfoByIdUsingGETParams = {
     /** id */
     id?: number;
@@ -109,6 +119,13 @@ declare namespace API {
 
   type IdRequest = {
     id?: number;
+  };
+
+  type ImageVo = {
+    name?: string;
+    status?: string;
+    uid?: string;
+    url?: string;
   };
 
   type InterfaceInfo = {
@@ -425,6 +442,10 @@ declare namespace API {
     type?: string;
   };
 
+  type uploadFileUsingPOSTParams = {
+    biz?: string;
+  };
+
   type UserAddRequest = {
     email?: string;
     gender?: number;
@@ -433,6 +454,16 @@ declare namespace API {
     userName?: string;
     userPassword?: string;
     userRole?: string;
+  };
+
+  type UserBindEmailRequest = {
+    captcha?: string;
+    emailAccount?: string;
+  };
+
+  type UserEmailLoginRequest = {
+    captcha?: string;
+    emailAccount?: string;
   };
 
   type UserInterfaceInfo = {
@@ -473,6 +504,11 @@ declare namespace API {
     userPassword?: string;
   };
 
+  type UserUnBindEmailRequest = {
+    captcha?: string;
+    emailAccount?: string;
+  };
+
   type UserUpdateRequest = {
     email?: string;
     gender?: number;
@@ -490,6 +526,7 @@ declare namespace API {
     createTime?: string;
     email?: string;
     gender?: string;
+    id?: number;
     invitationCode?: string;
     secretKey?: string;
     status?: number;

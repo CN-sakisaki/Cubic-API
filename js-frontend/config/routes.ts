@@ -8,6 +8,13 @@ export default [
     hideInMenu: true,
   },
   {
+    path: '/account/center',
+    name: '个人中心',
+    icon: 'UserOutlined',
+    component: './User/UserInfo',
+    hideInMenu: true,
+  },
+  {
     path: '/user',
     layout: false,
     routes: [
