@@ -15,6 +15,8 @@ import java.util.Date;
 @TableName(value = "user")
 @Data
 public class User implements Serializable {
+    @TableField
+    private static final long serialVersionUID = 1L;
     /**
      * id
      */
@@ -37,12 +39,17 @@ public class User implements Serializable {
     private String userAvatar;
 
     /**
-     * 性别
+     * 邮箱
      */
-    private Integer gender;
+    private String email;
 
     /**
-     * 用户角色: user, admin
+     * 性别(0-男 1-女)
+     */
+    private String gender;
+
+    /**
+     * 用户角色：user / admin
      */
     private String userRole;
 
@@ -52,14 +59,29 @@ public class User implements Serializable {
     private String userPassword;
 
     /**
-     * 签名 accessKey
+     * accessKey
      */
     private String accessKey;
 
     /**
-     * 签名 secretKey
+     * secretKey
      */
     private String secretKey;
+
+    /**
+     * 帐号状态（0-正常 1-封号）
+     */
+    private Integer status;
+
+    /**
+     * 钱包余额,注册送30币
+     */
+    private Long balance;
+
+    /**
+     * 邀请码
+     */
+    private String invitationCode;
 
     /**
      * 创建时间
@@ -76,8 +98,4 @@ public class User implements Serializable {
      */
     @TableLogic
     private Integer isDeleted;
-
-
-    @TableField(exist = false)
-    private static final long serialVersionUID = 1L;
 }

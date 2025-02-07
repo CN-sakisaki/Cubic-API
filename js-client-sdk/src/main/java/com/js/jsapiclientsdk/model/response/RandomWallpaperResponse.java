@@ -13,4 +13,6 @@ import lombok.EqualsAndHashCode;
 public class RandomWallpaperResponse extends ResultResponse {
     private static final long serialVersionUID = -6467312483425078539L;
     private String imgurl;
+    private String width;
+    private String height;
 }

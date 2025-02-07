@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
+import java.util.Date;
 
 /**
  * @author JianShang
@@ -15,7 +16,6 @@ import java.io.Serializable;
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class InterfaceInfoQueryRequest extends PageRequest implements Serializable {
-
     /**
      * 主键
      */
@@ -37,6 +37,11 @@ public class InterfaceInfoQueryRequest extends PageRequest implements Serializab
     private String url;
 
     /**
+     * 返回格式(JSON等等)
+     */
+    private String returnFormat;
+
+    /**
      * 请求头
      */
     private String requestHeader;
@@ -47,7 +52,7 @@ public class InterfaceInfoQueryRequest extends PageRequest implements Serializab
     private String responseHeader;
 
     /**
-     * 接口状态（0-关闭，1-开启）
+     * 接口状态 （0-关闭， 1-开启）
      */
     private Integer status;
 
@@ -61,4 +66,13 @@ public class InterfaceInfoQueryRequest extends PageRequest implements Serializab
      */
     private Long userId;
 
+    /**
+     * 扣除积分数
+     */
+    private Long reduceScore;
+
+    /**
+     * 创建时间
+     */
+    private Date createTime;
 }

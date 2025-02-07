@@ -1,6 +1,7 @@
 package com.js.jsapiinterface.utils;
 
 import cn.hutool.http.HttpRequest;
+import cn.hutool.http.HttpResponse;
 import com.js.jsapicommon.common.ErrorCode;
 import com.js.jsapicommon.common.BusinessException;
 import lombok.extern.slf4j.Slf4j;

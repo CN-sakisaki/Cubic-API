@@ -16,6 +16,7 @@ import com.js.project.exception.BusinessException;
 import com.js.project.model.dto.user.*;
 import com.js.project.model.vo.UserVO;
 import com.js.project.service.UserService;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.DigestUtils;
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/user")
+@Slf4j
 public class UserController {
 
     @Resource
@@ -59,12 +61,13 @@ public class UserController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         String userAccount = userRegisterRequest.getUserAccount();
+        String email = userRegisterRequest.getEmail();
         String userPassword = userRegisterRequest.getUserPassword();
         String checkPassword = userRegisterRequest.getCheckPassword();
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
             return null;
         }
-        long result = userService.userRegister(userAccount, userPassword, checkPassword);
+        long result = userService.userRegister(userAccount, email, userPassword, checkPassword);
         return ResultUtils.success(result);
     }
 
@@ -76,7 +79,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/login")
-    public BaseResponse<User> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
+    public BaseResponse<UserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
         if (userLoginRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -85,7 +88,55 @@ public class UserController {
         if (StringUtils.isAnyBlank(userAccount, userPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        User user = userService.userLogin(userAccount, userPassword, request);
+        UserVO userVO = userService.userLogin(userAccount, userPassword, request);
+        return ResultUtils.success(userVO);
+    }
+
+    /**
+     * 用户电子邮件登录
+     *
+     * @param userEmailLoginRequest 用户登录请求
+     * @param request               请求
+     * @return {@link BaseResponse}<{@link User}>
+     */
+    @PostMapping("/email/login")
+    public BaseResponse<UserVO> userEmailLogin(@RequestBody UserEmailLoginRequest userEmailLoginRequest, HttpServletRequest request) {
+        if (userEmailLoginRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        UserVO user = userService.userEmailLogin(userEmailLoginRequest, request);
+        return ResultUtils.success(user);
+    }
+
+    /**
+     * 用户绑定电子邮件
+     *
+     * @param request              请求
+     * @param userBindEmailRequest 用户绑定电子邮件请求
+     * @return {@link BaseResponse}<{@link UserVO}>
+     */
+    @PostMapping("/bindEmail")
+    public BaseResponse<UserVO> userBindEmail(@RequestBody UserBindEmailRequest userBindEmailRequest, HttpServletRequest request) {
+        if (userBindEmailRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        UserVO user = userService.userBindEmail(userBindEmailRequest, request);
+        return ResultUtils.success(user);
+    }
+
+    /**
+     * 用户取消绑定电子邮件
+     *
+     * @param request                请求
+     * @param userUnBindEmailRequest 用户取消绑定电子邮件请求
+     * @return {@link BaseResponse}<{@link UserVO}>
+     */
+    @PostMapping("/unbindEmail")
+    public BaseResponse<UserVO> userUnBindEmail(@RequestBody UserUnBindEmailRequest userUnBindEmailRequest, HttpServletRequest request) {
+        if (userUnBindEmailRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        UserVO user = userService.userUnBindEmail(userUnBindEmailRequest, request);
         return ResultUtils.success(user);
     }
 
@@ -118,6 +169,22 @@ public class UserController {
         BeanUtils.copyProperties(user, userVO);
         return ResultUtils.success(userVO);
     }
+
+    /**
+     * 获取验证码
+     *
+     * @param userEmailRequest 电子邮件帐户
+     * @return {@link BaseResponse}<{@link String}>
+     */
+    @PostMapping("/getCaptcha")
+    public BaseResponse<Boolean> getCaptcha(UserEmailRequest userEmailRequest) {
+        if (StringUtils.isBlank(userEmailRequest.getEmailAccount())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        boolean result = userService.getCaptcha(userEmailRequest.getEmailAccount());
+        return ResultUtils.success(result);
+    }
+
 
     // endregion
 
@@ -164,11 +231,11 @@ public class UserController {
     @PostMapping("/delete")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> deleteUser(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
-        if (deleteRequest == null || deleteRequest.getId() <= 0) {
+        List<Long> idList = deleteRequest.getIdList();
+        if (idList.isEmpty()) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        boolean b = userService.removeById(deleteRequest.getId());
-        return ResultUtils.success(b);
+        return ResultUtils.success(userService.removeByIds(idList));
     }
 
     /**
@@ -188,6 +255,18 @@ public class UserController {
         BeanUtils.copyProperties(userUpdateRequest, user);
         boolean result = userService.updateById(user);
         return ResultUtils.success(result);
+    }
+
+    @PostMapping("/update/voucher")
+    public BaseResponse<UserVO> updateVoucher(HttpServletRequest request) {
+        if (request == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        User user = new User();
+        BeanUtils.copyProperties(loginUser, user);
+        UserVO userVO = userService.updateVoucher(user);
+        return ResultUtils.success(userVO);
     }
 
     /**

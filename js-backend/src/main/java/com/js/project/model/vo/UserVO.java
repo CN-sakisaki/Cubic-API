@@ -15,9 +15,7 @@ import java.util.Date;
 public class UserVO implements Serializable {
 
     private static final long serialVersionUID = -4558534873206234257L;
-    /**
-     * id
-     */
+
     private Long id;
 
     /**
@@ -34,11 +32,15 @@ public class UserVO implements Serializable {
      * 用户头像
      */
     private String userAvatar;
+    /**
+     * 邮箱
+     */
+    private String email;
 
     /**
      * 性别
      */
-    private Integer gender;
+    private String gender;
 
     /**
      * 用户角色: user, admin
@@ -51,9 +53,29 @@ public class UserVO implements Serializable {
     private Date createTime;
 
     /**
-     * 更新时间
+     * accessKey
      */
-    private Date updateTime;
+    private String accessKey;
+
+    /**
+     * secretKey
+     */
+    private String secretKey;
+
+    /**
+     * 帐号状态（0-正常 1-封号）
+     */
+    private Integer status;
+
+    /**
+     * 钱包余额,注册送30币
+     */
+    private Long balance;
+
+    /**
+     * 邀请码
+     */
+    private String invitationCode;
 
 
 }

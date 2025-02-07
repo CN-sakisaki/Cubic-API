@@ -3,6 +3,11 @@ package com.js.project.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.js.jsapicommon.model.entity.User;
+import com.js.project.model.dto.user.UserBindEmailRequest;
+import com.js.project.model.dto.user.UserEmailLoginRequest;
+import com.js.project.model.dto.user.UserEmailRequest;
+import com.js.project.model.dto.user.UserUnBindEmailRequest;
+import com.js.project.model.vo.UserVO;
 
 
 import javax.servlet.http.HttpServletRequest;
@@ -23,7 +28,7 @@ public interface UserService extends IService<User> {
      * @param checkPassword 校验密码
      * @return 新用户 id
      */
-    long userRegister(String userAccount, String userPassword, String checkPassword);
+    long userRegister(String userAccount, String email, String userPassword, String checkPassword);
 
     /**
      * 用户登录
@@ -33,7 +38,16 @@ public interface UserService extends IService<User> {
      * @param request
      * @return 脱敏后的用户信息
      */
-    User userLogin(String userAccount, String userPassword, HttpServletRequest request);
+    UserVO userLogin(String userAccount, String userPassword, HttpServletRequest request);
+
+    /**
+     * 用户电子邮件登录
+     *
+     * @param userEmailLoginRequest 用户电子邮件登录请求
+     * @param request               要求
+     * @return {@link UserVO}
+     */
+    UserVO userEmailLogin(UserEmailLoginRequest userEmailLoginRequest, HttpServletRequest request);
 
     /**
      * 获取当前登录用户
@@ -58,4 +72,22 @@ public interface UserService extends IService<User> {
      * @return
      */
     boolean userLogout(HttpServletRequest request);
+
+    /**
+     * 获取验证码
+     * @param userEmailRequest
+     * @return boolean
+     */
+    boolean getCaptcha(String userEmail);
+
+    UserVO userBindEmail(UserBindEmailRequest userBindEmailRequest, HttpServletRequest request);
+
+    UserVO userUnBindEmail(UserUnBindEmailRequest userUnBindEmailRequest, HttpServletRequest request);
+
+    /**
+     * 更新凭证
+     * @param user
+     * @return UserVO
+     */
+    UserVO updateVoucher(User user);
 }

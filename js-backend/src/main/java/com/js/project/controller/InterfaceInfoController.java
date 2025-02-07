@@ -1,6 +1,8 @@
 package com.js.project.controller;
 
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -9,6 +11,8 @@ import com.js.jsapiclientsdk.client.JsApiClient;
 import com.js.jsapiclientsdk.model.request.CurrentRequest;
 import com.js.jsapiclientsdk.model.response.ResultResponse;
 import com.js.jsapiclientsdk.service.ApiService;
+import com.js.jsapicommon.model.dto.RequestParamsField;
+import com.js.jsapicommon.model.dto.ResponseParamsField;
 import com.js.jsapicommon.model.entity.InterfaceInfo;
 import com.js.jsapicommon.model.entity.User;
 import com.js.project.annotation.AuthCheck;
@@ -33,6 +37,7 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * @author JianShang
@@ -73,6 +78,16 @@ public class InterfaceInfoController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         InterfaceInfo interfaceInfo = new InterfaceInfo();
+        if (CollectionUtils.isNotEmpty(interfaceInfoAddRequest.getRequestParams())) {
+            List<RequestParamsField> requestParamsFields = interfaceInfoAddRequest.getRequestParams().stream().filter(field -> StringUtils.isNotBlank(field.getFieldName())).collect(Collectors.toList());
+            String requestParams = JSONUtil.toJsonStr(requestParamsFields);
+            interfaceInfo.setRequestParams(requestParams);
+        }
+        if (CollectionUtils.isNotEmpty(interfaceInfoAddRequest.getResponseParams())) {
+            List<ResponseParamsField> responseParamsFields = interfaceInfoAddRequest.getResponseParams().stream().filter(field -> StringUtils.isNotBlank(field.getFieldName())).collect(Collectors.toList());
+            String responseParams = JSONUtil.toJsonStr(responseParamsFields);
+            interfaceInfo.setResponseParams(responseParams);
+        }
         BeanUtils.copyProperties(interfaceInfoAddRequest, interfaceInfo);
         // 校验
         interfaceInfoService.validInterfaceInfo(interfaceInfo, true);
@@ -95,21 +110,23 @@ public class InterfaceInfoController {
      */
     @PostMapping("/delete")
     public BaseResponse<Boolean> deleteInterfaceInfo(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
-        if (deleteRequest == null || deleteRequest.getId() <= 0) {
+        List<Long> idList = deleteRequest.getIdList();
+        if (idList.isEmpty()) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User user = userService.getLoginUser(request);
-        long id = deleteRequest.getId();
         // 判断是否存在
-        InterfaceInfo oldInterfaceInfo = interfaceInfoService.getById(id);
-        if (oldInterfaceInfo == null) {
+        List<InterfaceInfo> interfaceInfoList = interfaceInfoService.listByIds(idList);
+        if (interfaceInfoList == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
-        // 仅本人或管理员可删除
-        if (!oldInterfaceInfo.getUserId().equals(user.getId()) && !userService.isAdmin(request)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        for (InterfaceInfo info : interfaceInfoList) {
+            // 仅本人或管理员可删除
+            if (!info.getUserId().equals(user.getId()) || !userService.isAdmin(request)) {
+                throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+            }
         }
-        boolean b = interfaceInfoService.removeById(id);
+        boolean b = interfaceInfoService.removeByIds(interfaceInfoList);
         return ResultUtils.success(b);
     }
 
@@ -121,12 +138,31 @@ public class InterfaceInfoController {
      * @return
      */
     @PostMapping("/update")
-    public BaseResponse<Boolean> updateInterfaceInfo(@RequestBody InterfaceInfoUpdateRequest interfaceInfoUpdateRequest,
-                                                     HttpServletRequest request) {
+    public BaseResponse<Boolean> updateInterfaceInfo(@RequestBody InterfaceInfoUpdateRequest interfaceInfoUpdateRequest, HttpServletRequest request) {
         if (interfaceInfoUpdateRequest == null || interfaceInfoUpdateRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         InterfaceInfo interfaceInfo = new InterfaceInfo();
+        if (CollectionUtils.isNotEmpty(interfaceInfoUpdateRequest.getRequestParams())) {
+            List<RequestParamsField> requestParamsFields = interfaceInfoUpdateRequest.getRequestParams()
+                    .stream()
+                    .filter(field -> StringUtils.isNotBlank(field.getFieldName()))
+                    .collect(Collectors.toList());
+            String requestParams = JSONUtil.toJsonStr(requestParamsFields);
+            interfaceInfo.setRequestParams(requestParams);
+        } else {
+            interfaceInfo.setRequestParams("[]");
+        }
+        if (CollectionUtils.isNotEmpty(interfaceInfoUpdateRequest.getResponseParams())) {
+            List<ResponseParamsField> responseParamsFields = interfaceInfoUpdateRequest.getResponseParams()
+                    .stream()
+                    .filter(field -> StringUtils.isNotBlank(field.getFieldName()))
+                    .collect(Collectors.toList());
+            String responseParams = JSONUtil.toJsonStr(responseParamsFields);
+            interfaceInfo.setResponseParams(responseParams);
+        } else {
+            interfaceInfo.setResponseParams("[]");
+        }
         BeanUtils.copyProperties(interfaceInfoUpdateRequest, interfaceInfo);
         // 参数校验
         interfaceInfoService.validInterfaceInfo(interfaceInfo, false);
@@ -205,8 +241,7 @@ public class InterfaceInfoController {
         }
         QueryWrapper<InterfaceInfo> queryWrapper = new QueryWrapper<>(interfaceInfoQuery);
         queryWrapper.like(StringUtils.isNotBlank(description), "description", description);
-        queryWrapper.orderBy(StringUtils.isNotBlank(sortField),
-                sortOrder.equals(CommonConstant.SORT_ORDER_ASC), sortField);
+        queryWrapper.orderBy(StringUtils.isNotBlank(sortField), sortOrder.equals(CommonConstant.SORT_ORDER_ASC), sortField);
         Page<InterfaceInfo> interfaceInfoPage = interfaceInfoService.page(new Page<>(current, size), queryWrapper);
         return ResultUtils.success(interfaceInfoPage);
     }
@@ -222,8 +257,7 @@ public class InterfaceInfoController {
      */
     @PostMapping("/online")
     @AuthCheck(mustRole = "admin")
-    public BaseResponse<Boolean> onlineInterfaceInfo(@RequestBody IdRequest idRequest,
-                                                     HttpServletRequest request) {
+    public BaseResponse<Boolean> onlineInterfaceInfo(@RequestBody IdRequest idRequest, HttpServletRequest request) {
         if (ObjectUtils.anyNull(idRequest, idRequest.getId()) || idRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -245,8 +279,7 @@ public class InterfaceInfoController {
      */
     @PostMapping("/offline")
     @AuthCheck(mustRole = "admin")
-    public BaseResponse<Boolean> offlineInterfaceInfo(@RequestBody IdRequest idRequest,
-                                                      HttpServletRequest request) {
+    public BaseResponse<Boolean> offlineInterfaceInfo(@RequestBody IdRequest idRequest, HttpServletRequest request) {
         if (idRequest == null || idRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -272,8 +305,7 @@ public class InterfaceInfoController {
      * @return BaseResponse<Object>
      */
     @PostMapping("/invoke")
-    public BaseResponse<Object> invokeInterfaceInfo(@RequestBody InterfaceInfoInvokeRequest interfaceInfoInvokeRequest,
-                                                    HttpServletRequest request) {
+    public BaseResponse<Object> invokeInterfaceInfo(@RequestBody InterfaceInfoInvokeRequest interfaceInfoInvokeRequest, HttpServletRequest request) {
         if (ObjectUtils.anyNull(interfaceInfoInvokeRequest, interfaceInfoInvokeRequest.getId()) || interfaceInfoInvokeRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -297,7 +329,8 @@ public class InterfaceInfoController {
             }
             requestParams = gson.toJson(jsonObject);
         }
-        Map<String, Object> params = new Gson().fromJson(requestParams, new TypeToken<Map<String, Object>>() {}.getType());
+        Map<String, Object> params = new Gson().fromJson(requestParams, new TypeToken<Map<String, Object>>() {
+        }.getType());
         User loginUser = userService.getLoginUser(request);
         String accessKey = loginUser.getAccessKey();
         String secretKey = loginUser.getSecretKey();

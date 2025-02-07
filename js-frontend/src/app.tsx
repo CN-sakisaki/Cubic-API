@@ -3,21 +3,24 @@ import { getLoginUserUsingGet } from '@/services/js-backend/userController';
 import { SettingDrawer } from '@ant-design/pro-components';
 import type { RunTimeLayoutConfig } from '@umijs/max';
 import { history } from '@umijs/max';
-import defaultSettings from '../config/defaultSettings';
+import { default as defaultSettings, default as Settings } from '../config/defaultSettings';
 import { requestConfig } from './requestConfig';
 
 const isDev = process.env.NODE_ENV === 'development';
 // const isProd = process.env.NODE_ENV === 'production';
 const loginPath = '/user/login';
 
+// 当页面首次加载时，获取要全局保存的数据
+const state: InitialState = {
+  loginUser: undefined,
+  settings: Settings,
+  open: false,
+};
+
 /**
  * @see  https://umijs.org/zh-CN/plugins/plugin-initial-state
  * */
 export async function getInitialState(): Promise<InitialState> {
-  // 当页面首次加载时，获取要全局保存的数据
-  const state: InitialState = {
-    loginUser: undefined,
-  };
   try {
     const res = await getLoginUserUsingGet();
     if (res.data) {

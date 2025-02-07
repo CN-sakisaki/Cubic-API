@@ -5,24 +5,27 @@
 <mapper namespace="com.js.project.mapper.UserMapper">
 
     <resultMap id="BaseResultMap" type="com.js.jsapicommon.model.entity.User">
-        <id property="id" column="id" jdbcType="BIGINT"/>
-        <result property="userName" column="userName" jdbcType="VARCHAR"/>
-        <result property="userAccount" column="userAccount" jdbcType="VARCHAR"/>
-        <result property="userAvatar" column="userAvatar" jdbcType="VARCHAR"/>
-        <result property="gender" column="gender" jdbcType="TINYINT"/>
-        <result property="userRole" column="userRole" jdbcType="VARCHAR"/>
-        <result property="userPassword" column="userPassword" jdbcType="VARCHAR"/>
-        <result property="accessKey" column="accessKey" jdbcType="VARCHAR"/>
-        <result property="secretKey" column="secretKey" jdbcType="VARCHAR"/>
-        <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
-        <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
-        <result property="isDeleted" column="isDeleted" jdbcType="TINYINT"/>
+        <id property="id" column="id" />
+        <result property="userName" column="userName" />
+        <result property="userAccount" column="userAccount" />
+        <result property="userAvatar" column="userAvatar" />
+        <result property="email" column="email" />
+        <result property="gender" column="gender" />
+        <result property="userRole" column="userRole" />
+        <result property="userPassword" column="userPassword" />
+        <result property="accessKey" column="accessKey" />
+        <result property="secretKey" column="secretKey" />
+        <result property="status" column="status" />
+        <result property="balance" column="balance" />
+        <result property="invitationCode" column="invitationCode" />
+        <result property="createTime" column="createTime" />
+        <result property="updateTime" column="updateTime" />
+        <result property="isDeleted" column="isDeleted" />
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,userName,userAccount,
-        userAvatar,gender,userRole,
-        userPassword,accessKey,secretKey,createTime,updateTime,
-        isDeleted
+        id,userName,userAccount,userAvatar,email,gender,
+        userRole,userPassword,accessKey,secretKey,status,
+        balance,invitationCode,createTime,updateTime,isDeleted
     </sql>
 </mapper>

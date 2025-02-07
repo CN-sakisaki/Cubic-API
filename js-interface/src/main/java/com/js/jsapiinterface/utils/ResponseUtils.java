@@ -1,5 +1,6 @@
 package com.js.jsapiinterface.utils;
 
+import cn.hutool.json.JSONObject;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.js.jsapicommon.common.ErrorCode;
@@ -7,6 +8,7 @@ import com.js.jsapiclientsdk.model.response.ResultResponse;
 import com.js.jsapicommon.common.BusinessException;
 
 import java.util.Map;
+
 import static com.js.jsapiinterface.utils.RequestUtils.get;
 
 /**
@@ -36,7 +38,6 @@ public class ResponseUtils {
         String response = null;
         try {
             response = get(baseUrl, params);
-            // 将响应内容转换为字符串
             Map<String, Object> fromResponse = responseToMap(response);
             boolean success = (boolean) fromResponse.get("success");
             ResultResponse baseResponse = new ResultResponse();
@@ -49,6 +50,30 @@ public class ResponseUtils {
             return baseResponse;
         } catch (BusinessException e) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "构建url异常");
+        }
+    }
+
+    /**
+     * 返回响应结果
+     * @param param 请求参数
+     * @return ResultResponse
+     */
+    public static ResultResponse baseResponse(String param) {
+        ResultResponse resultResponse = new ResultResponse();
+        try {
+            String response = get(param);
+            Map<String, Object> fromResponse = responseToMap(response);
+            JSONObject jsonResponse = new JSONObject(response);
+            int status = jsonResponse.getInt("status");
+            if (!(status == 200)) {
+                resultResponse.setData(fromResponse);
+                return resultResponse;
+            }
+            fromResponse.remove("message");
+            resultResponse.setData(fromResponse);
+            return resultResponse;
+        } catch (BusinessException e) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "请求错误");
         }
     }
 }

@@ -1,112 +1,90 @@
 import { Footer } from '@/components';
-import { userLoginUsingPost } from '@/services/js-backend/userController';
-import { LockOutlined, UserOutlined } from '@ant-design/icons';
+import {
+  getCaptchaUsingPost,
+  userEmailLoginUsingPost,
+  userLoginUsingPost,
+} from '@/services/js-backend/userController';
+import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons';
 import { LoginForm, ProFormCheckbox, ProFormText } from '@ant-design/pro-components';
+import { ProFormCaptcha } from '@ant-design/pro-form';
 import { Helmet, history, Link, useModel } from '@umijs/max';
 import { Alert, message, Tabs } from 'antd';
 import { createStyles } from 'antd-style';
 import React, { useState } from 'react';
-import { flushSync } from 'react-dom';
 import Settings from '../../../../config/defaultSettings';
 
-const useStyles = createStyles(({ token }) => {
-  return {
-    action: {
-      marginLeft: '8px',
-      color: 'rgba(0, 0, 0, 0.2)',
-      fontSize: '24px',
-      verticalAlign: 'middle',
-      cursor: 'pointer',
-      transition: 'color 0.3s',
-      '&:hover': {
-        color: token.colorPrimaryActive,
-      },
-    },
-    lang: {
-      width: 42,
-      height: 42,
-      lineHeight: '42px',
-      position: 'fixed',
-      right: 16,
-      borderRadius: token.borderRadius,
-      ':hover': {
-        backgroundColor: token.colorBgTextHover,
-      },
-    },
-    container: {
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-      overflow: 'auto',
-      backgroundImage:
-        "url('https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/V-_oS6r-i7wAAAAAAAAAAAAAFl94AQBr')",
-      backgroundSize: '100% 100%',
-    },
-  };
-});
-const Lang = () => {
-  const { styles } = useStyles();
-  return;
-};
-const LoginMessage: React.FC<{
-  content: string;
-}> = ({ content }) => {
-  return (
-    <Alert
-      style={{
-        marginBottom: 24,
-      }}
-      message={content}
-      type="error"
-      showIcon
-    />
-  );
-};
+const useStyles = createStyles(({ token }) => ({
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100vh',
+    overflow: 'auto',
+    backgroundImage:
+      "url('https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/V-_oS6r-i7wAAAAAAAAAAAAAFl94AQBr')",
+    backgroundSize: '100% 100%',
+  },
+  formActions: {
+    marginBottom: 24,
+    display: 'flex',
+    alignItems: 'center', // 确保垂直居中对齐
+    justifyContent: 'flex-start', // 改为左对齐，使所有元素靠左
+  },
+  registerLink: {
+    marginLeft: 8, // 减少左边距，使其更靠近复选框
+  },
+  loginFormTitle: {
+    marginTop: 24, // 增加顶部外边距，使标题下移
+  },
+}));
+
+const LoginMessage: React.FC<{ content: string }> = ({ content }) => (
+  <Alert style={{ marginBottom: 24 }} message={content} type="error" showIcon />
+);
+
 const Login: React.FC = () => {
-  const [userLoginState, setUserLoginState] = useState<API.LoginResult>({});
   const [type, setType] = useState<string>('account');
-  const { initialState, setInitialState } = useModel('@@initialState');
+  const { setInitialState } = useModel('@@initialState');
   const { styles } = useStyles();
-  const fetchUserInfo = async () => {
-    const userInfo = await initialState?.fetchUserInfo?.();
-    if (userInfo) {
-      flushSync(() => {
-        setInitialState((s) => ({
-          ...s,
-          currentUser: userInfo,
-        }));
-      });
+
+  const doLogin = (res: any) => {
+    if (res.data && res.code === 0) {
+      message.success('登陆成功');
+      setTimeout(() => {
+        const urlParams = new URL(window.location.href).searchParams;
+        history.push(urlParams.get('redirect') || '/');
+      }, 100);
+      setInitialState({ loginUser: res.data, settings: Settings });
     }
   };
-  const handleSubmit = async (values: API.UserLoginRequest) => {
+
+  const handleSubmit = async (values: API.UserLoginRequest | API.UserEmailLoginRequest) => {
     try {
-      // 登录
-      const msg = await userLoginUsingPost({
-        ...values,
-      });
-      if (msg.data) {
-        // 创建新的URL对象，并获取当前window.location.href的查询参数
-        const urlParams = new URL(window.location.href).searchParams;
-        // 用登录用户的数据更新初始状态
-        await setInitialState({
-          loginUser: msg.data,
-        });
-        // 将用户重定向到 'redirect' 参数指定的URL，如果 'redirect' 参数不存在，则重定向到首页('/')
-        setTimeout(() => {
-          history.push(urlParams.get('redirect') || '/');
-        }, 100);
-        return;
+      let res;
+      if (type === 'account') {
+        res = await userLoginUsingPost(values as API.UserLoginRequest);
+      } else {
+        res = await userEmailLoginUsingPost(values as API.UserEmailLoginRequest);
+      }
+
+      doLogin(res);
+    } catch (error) {
+      console.error(error);
+      message.error('登录失败，请重试！');
+    }
+  };
+
+  const handleGetCaptcha = async (emailAccount: string) => {
+    try {
+      const res = await getCaptchaUsingPost({ emailAccount });
+      if (res.data && res.code === 0) {
+        message.success('获取验证码成功');
       }
     } catch (error) {
-      // 定义默认的登录失败信息
-      const defaultLoginFailureMessage = '登录失败，请重试！';
-      // 控制台输出错误
-      console.log(error);
-      // 使用message组件显示错误信息
-      message.error(defaultLoginFailureMessage);
+      console.error(error);
+      message.error('验证码发送失败，请重试！');
     }
   };
-  const { status, type: loginType } = userLoginState;
+
   return (
     <div className={styles.container}>
       <Helmet>
@@ -114,18 +92,9 @@ const Login: React.FC = () => {
           {'登录'}- {Settings.title}
         </title>
       </Helmet>
-      <Lang />
-      <div
-        style={{
-          flex: '1',
-          padding: '32px 0',
-        }}
-      >
+      <div style={{ flex: '1', padding: '32px 0' }}>
         <LoginForm
-          contentStyle={{
-            minWidth: 280,
-            maxWidth: '75vw',
-          }}
+          contentStyle={{ minWidth: 280, maxWidth: '75vw' }}
           logo={
             <img
               alt="logo"
@@ -134,73 +103,127 @@ const Login: React.FC = () => {
             />
           }
           title="Cubic API"
-          subTitle={<a>Cubic API 是个人云接口平台</a>}
-          initialValues={{
-            autoLogin: true,
-          }}
-          // actions={['其他登录方式 :', <ActionIcons key="icons" />]}
+          subTitle={
+            <div className={styles.loginFormTitle}>
+              <span>Cubic API 是个人云接口平台</span>
+            </div>
+          }
+          initialValues={{ autoLogin: true }}
           onFinish={async (values) => {
-            await handleSubmit(values as API.UserLoginRequest);
+            if (type === 'account') {
+              await handleSubmit(values as API.UserLoginRequest);
+            } else {
+              await handleSubmit(values as API.UserLoginRequest);
+            }
           }}
         >
           <Tabs activeKey={type} onChange={setType} centered>
-            <Tabs.TabPane key="account" tab={'账号密码登录'} />
+            <Tabs.TabPane key="account" tab="账号密码登录" />
+            <Tabs.TabPane key="email" tab="邮箱登录" />
           </Tabs>
 
-          {status === 'error' && loginType === 'account' && (
-            <LoginMessage content={'错误的用户名和密码(admin/12345678)'} />
-          )}
           {type === 'account' && (
             <>
               <ProFormText
                 name="userAccount"
-                fieldProps={{
-                  size: 'large',
-                  prefix: <UserOutlined />,
-                }}
-                placeholder={'用户名: admin or user'}
-                rules={[
-                  {
-                    required: true,
-                    message: '用户名是必填项！',
-                  },
-                ]}
+                fieldProps={{ size: 'large', prefix: <UserOutlined /> }}
+                placeholder="用户名: admin or user"
+                rules={[{ required: true, message: '用户名是必填项！' }]}
               />
               <ProFormText.Password
                 name="userPassword"
-                fieldProps={{
-                  size: 'large',
-                  prefix: <LockOutlined />,
-                }}
-                placeholder={'密码: 12345678'}
-                rules={[
-                  {
-                    required: true,
-                    message: '密码是必填项！',
-                  },
-                ]}
+                fieldProps={{ size: 'large', prefix: <LockOutlined /> }}
+                placeholder="密码: 12345678"
+                rules={[{ required: true, message: '密码是必填项！' }]}
               />
             </>
           )}
 
-          <div
-            style={{
-              marginBottom: 24,
-            }}
+          {type === 'email' && (
+            <>
+              <ProFormText
+                fieldProps={{
+                  size: 'large',
+                  prefix: <MailOutlined />,
+                }}
+                name="emailAccount"
+                placeholder={'请输入邮箱账号！'}
+                rules={[
+                  {
+                    required: true,
+                    message: '邮箱账号是必填项！',
+                  },
+                  {
+                    pattern: /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$/,
+                    message: '不合法的邮箱账号！',
+                  },
+                ]}
+              />
+              <ProFormCaptcha
+                fieldProps={{
+                  size: 'large',
+                  prefix: <LockOutlined />,
+                }}
+                captchaProps={{
+                  size: 'large',
+                }}
+                placeholder={'请输入验证码！'}
+                captchaTextRender={(timing, count) => {
+                  if (timing) {
+                    return `${count} ${'秒后重新获取'}`;
+                  }
+                  return '获取验证码';
+                }}
+                phoneName={'emailAccount'}
+                name="captcha"
+                rules={[
+                  {
+                    required: true,
+                    message: '验证码是必填项！',
+                  },
+                ]}
+                onGetCaptcha={handleGetCaptcha}
+              />
+            </>
+          )}
+          <ProFormCheckbox
+            initialValue={true}
+            name="agreeToAnAgreement"
+            rules={[
+              () => ({
+                validator(_, value) {
+                  if (!value) {
+                    return Promise.reject(new Error('同意协议后才可以登录'));
+                  }
+                  return Promise.resolve();
+                },
+                required: true,
+              }),
+            ]}
           >
+            同意并接受《
+            <a target={'_blank'} href={''} rel="noreferrer">
+              隐私协议
+            </a>
+            》《
+            <a target={'_blank'} href={''} rel="noreferrer">
+              用户协议
+            </a>
+            》
+          </ProFormCheckbox>
+
+          <div className={styles.formActions}>
             <ProFormCheckbox noStyle name="autoLogin">
               自动登录
             </ProFormCheckbox>
-            <Link to={'/user/register'}>新用户注册</Link>
-            <a
-              style={{
-                float: 'right',
-              }}
-              target="_blank"
-              rel="noreferrer"
-            >
-              忘记密码 ?
-            </a>
+            <Link to="/user/register" className={styles.registerLink}>
+              新用户注册 &gt;&gt;
+            </Link>
+            <div style={{ marginLeft: 'auto' }}>
+              <a target="_blank" rel="noreferrer" href="/user/forgot-password">
+                忘记密码 ?
+              </a>
+            </div>
           </div>
         </LoginForm>
       </div>
@@ -208,4 +231,5 @@ const Login: React.FC = () => {
     </div>
   );
 };
+
 export default Login;

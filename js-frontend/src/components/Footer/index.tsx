@@ -3,7 +3,7 @@ import { DefaultFooter } from '@ant-design/pro-components';
 import React from 'react';
 
 const Footer: React.FC = () => {
-  const defaultMessage = 'JianShang出品';
+  const defaultMessage = 'SaKiSaKi';
   const currentYear = new Date().getFullYear();
   return (
     <DefaultFooter
