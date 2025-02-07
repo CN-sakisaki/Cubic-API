@@ -1,7 +1,7 @@
 import { Footer } from '@/components';
 import { userRegisterUsingPost } from '@/services/js-backend/userController';
 import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons';
-import { LoginForm, ProFormText } from '@ant-design/pro-components';
+import { LoginForm, ProFormCheckbox, ProFormText } from '@ant-design/pro-components';
 import { Helmet, useLocation, useNavigate } from '@umijs/max';
 import { Alert, message, Tabs, Typography } from 'antd';
 import { createStyles } from 'antd-style';
@@ -121,6 +121,31 @@ const Register: React.FC = () => {
               />
             </>
           )}
+          <ProFormCheckbox
+            initialValue={true}
+            name="agreeToAnAgreement"
+            rules={[
+              () => ({
+                validator(_, value) {
+                  if (!value) {
+                    return Promise.reject(new Error('同意协议后才可以登录'));
+                  }
+                  return Promise.resolve();
+                },
+                required: true,
+              }),
+            ]}
+          >
+            同意并接受《
+            <a target={'_blank'} href={''} rel="noreferrer">
+              隐私协议
+            </a>
+            》《
+            <a target={'_blank'} href={''} rel="noreferrer">
+              用户协议
+            </a>
+            》
+          </ProFormCheckbox>
 
           <div className={styles.footerLink}>
             <Link onClick={() => navigate('/user/login')}>{'<< 我已有账号，去登录'}</Link>
