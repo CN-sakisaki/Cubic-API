@@ -25,6 +25,7 @@ import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.RequestPath;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpResponseDecorator;
@@ -76,7 +77,9 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
 
     private static final String INTERFACE_HOST = "http://localhost:8123";
 
-    private static final String GATEWAY_HOST = "http://localhost:8090";
+    private static final String GATEWAY_HOST = "https";
+
+    private static final String GATEWAY_HTTP_HOST = "http";
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -130,12 +133,17 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
             String uri = request.getURI().toString().trim();
             // 校验请求路径和请求方法
             if (StringUtils.isAnyBlank(uri, method)) {
-                throw new BusinessException(ErrorCode.PARAMS_ERROR,"请检查请求参数");
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "请检查请求参数");
             }
             int index = uri.indexOf("?");
             if (index != -1) {
                 uri = uri.substring(0, index);
             }
+
+            if (uri.contains(GATEWAY_HTTP_HOST)) {
+                uri = uri.replace(GATEWAY_HTTP_HOST, GATEWAY_HOST);
+            }
+            log.info("请求路径为：{}", uri);
             // 校验接口
             InterfaceInfo interfaceInfo = innerInterfaceInfoService.getInterfaceInfo(uri, method);
             if (interfaceInfo == null) {

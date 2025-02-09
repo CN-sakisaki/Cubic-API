@@ -24,12 +24,17 @@ spring:
 #          uri: https://yupi.icu
 #          predicates:
 #            - Path=/fallback
+  redis:
+    host: 111.230.49.155
+    port: 6379
+    database: 4
+    password: JS285699
 logging:
   level:
     org:
       springframework:
         cloud:
-          gateway: trace
+          gateway: error
 dubbo:
   application:
     name: dubbo-springboot-demo-provider

@@ -33,13 +33,14 @@ public class CacheBodyGatewayFilter implements Ordered, GlobalFilter {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         // 输出日志
         ServerHttpRequest request = exchange.getRequest();
-        log.info("请求唯一id：{}", request.getId());
+        // log.info("请求唯一id：{}", request.getId());
         log.info("请求方法：{}", request.getMethod());
         log.info("请求路径：{}", request.getPath());
-        log.info("网关本地地址：{}", request.getLocalAddress());
-        log.info("请求远程地址：{}", request.getRemoteAddress());
+        // log.info("网关本地地址：{}", request.getLocalAddress());
+        // log.info("请求远程地址：{}", request.getRemoteAddress());
         log.info("接口请求IP：{}", getIp(request));
         log.info("url:{}", request.getURI());
+
         if (exchange.getRequest().getHeaders().getContentType() == null) {
             // 将请求原封不动地传递给过滤器链中的下一个过滤器继续处理，不做额外的操作，可能当前过滤器并不适用于这种没有内容类型定义的请求情况
             return chain.filter(exchange);

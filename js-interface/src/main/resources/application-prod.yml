@@ -2,3 +2,6 @@ server:
   port: 8123
   servlet:
     context-path: /api
+  mvc:
+    path match:
+      matching-strategy: ant_path_matcher

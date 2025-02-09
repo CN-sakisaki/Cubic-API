@@ -8,7 +8,3 @@ spring:
   mvc:
     path match:
       matching-strategy: ant_path_matcher
-#yuapi:
-#  client:
-#    access-key: js
-#    secret-key: abcdefgh
