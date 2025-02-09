@@ -28,6 +28,7 @@ import ImgCrop from 'antd-img-crop';
 import { RcFile } from 'antd/es/upload';
 import Paragraph from 'antd/lib/typography/Paragraph';
 import React, { useEffect, useRef, useState } from 'react';
+import Settings from '../../../../config/defaultSettings';
 
 export const valueLength = (val: any) => {
   return val && typeof val === 'string' && val.trim().length > 0;
@@ -173,7 +174,7 @@ const UserInfo: React.FC = () => {
     setVoucherLoading(true);
     const res = await updateVoucherUsingPost();
     if (res.data && res.code === 0) {
-      setInitialState({ loginUser: res.data });
+      setInitialState({ loginUser: res.data, settings: Settings });
       setTimeout(() => {
         message.success(`凭证更新成功`);
         setVoucherLoading(false);

@@ -28,7 +28,7 @@ interface ResponseStructure {
 export const requestConfig: RequestConfig = {
   baseURL:
     process.env.NODE_ENV === 'production'
-      ? 'http://api-backend.website-of-js.cn:7529'
+      ? 'https://api-backend.website-of-js.cn'
       : 'http://localhost:7529',
   // AJAX 请求将会携带 Cookie 凭证信息  凭证会被自动包含在新地请求头中发送给服务器
   withCredentials: true,
