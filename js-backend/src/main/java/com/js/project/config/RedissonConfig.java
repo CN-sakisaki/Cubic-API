@@ -28,13 +28,21 @@ public class RedissonConfig {
      */
     private String port;
 
+    /**
+     * 密码
+     */
+    private String password;
+
     @Bean
     public RedissonClient redissonClient() {
         // 1. 创建配置
         Config config = new Config();
         String redisAddress = String.format("redis://%s:%s", host, port);
         // 设置 Redis 服务器的地址和要使用的数据库编号
-        config.useSingleServer().setAddress(redisAddress).setDatabase(4);
+        config.useSingleServer()
+                .setAddress(redisAddress)
+                .setDatabase(4)
+                .setPassword(password);
         // 2. 创建实例
         return Redisson.create(config);
     }
