@@ -75,7 +75,7 @@ public interface UserService extends IService<User> {
 
     /**
      * 获取验证码
-     * @param userEmailRequest
+     * @param userEmail
      * @return boolean
      */
     boolean getCaptcha(String userEmail);
