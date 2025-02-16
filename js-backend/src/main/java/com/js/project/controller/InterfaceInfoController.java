@@ -16,6 +16,7 @@ import com.js.jsapicommon.model.dto.ResponseParamsField;
 import com.js.jsapicommon.model.entity.InterfaceInfo;
 import com.js.jsapicommon.model.entity.User;
 import com.js.project.annotation.AuthCheck;
+import com.js.project.annotation.RedisRateLimiter;
 import com.js.project.common.*;
 import com.js.project.constant.CommonConstant;
 import com.js.project.exception.BusinessException;
@@ -305,6 +306,7 @@ public class InterfaceInfoController {
      * @return BaseResponse<Object>
      */
     @PostMapping("/invoke")
+    @RedisRateLimiter(value = "invoke",limit = 2)
     public BaseResponse<Object> invokeInterfaceInfo(@RequestBody InterfaceInfoInvokeRequest interfaceInfoInvokeRequest, HttpServletRequest request) {
         if (ObjectUtils.anyNull(interfaceInfoInvokeRequest, interfaceInfoInvokeRequest.getId()) || interfaceInfoInvokeRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
