@@ -18,12 +18,11 @@ export const InterfaceStatusEnum: any = {
     text: '已上线',
     status: 'processing',
   },
-}
+};
 
 export const statusEnum: any = {
-  0: '审核中',
+  0: '已下线',
   1: '已上线',
-  2: '已下线'
 };
 
 export const productTypeColorEnum: any = {
@@ -32,9 +31,9 @@ export const productTypeColorEnum: any = {
 };
 
 export const orderStatusEnum: any = {
-  "SUCCESS": '支付成功',
-  "NOTPAY": '未支付',
-  "CLOSED": '已取消'
+  SUCCESS: '支付成功',
+  NOTPAY: '未支付',
+  CLOSED: '已取消',
 };
 
 export const orderPayTypeEnum: any = {
@@ -43,7 +42,7 @@ export const orderPayTypeEnum: any = {
 };
 
 export const productTypeEnum: any = {
-  RECHARGEACTIVITY: "充值活动",
-  RECHARGE: "积分充值",
-  VIP:"VIP会员"
+  RECHARGEACTIVITY: '充值活动',
+  RECHARGE: '积分充值',
+  VIP: 'VIP会员',
 };

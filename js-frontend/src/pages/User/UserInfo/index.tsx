@@ -1,6 +1,10 @@
 import EmailModal from '@/components/EmailModal';
 import { requestConfig } from '@/requestConfig';
-import { monthlySignUsingPost } from '@/services/js-backend/monthlySignRecordsController';
+import {
+  getConsecutiveSignDaysFromRedisUsingPost,
+  monthlySignTotalUsingPost,
+  monthlySignUsingPost,
+} from '@/services/js-backend/monthlySignRecordsController';
 import {
   getLoginUserUsingGet,
   updateUserUsingPost,
@@ -9,7 +13,7 @@ import {
   userUnBindEmailUsingPost,
 } from '@/services/js-backend/userController';
 import { EditOutlined, PlusOutlined } from '@ant-design/icons';
-import ProCard from '@ant-design/pro-card';
+import { ProCard } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
 import {
   Button,
@@ -54,6 +58,8 @@ const UserInfo: React.FC = () => {
   const handleCancel = () => setPreviewOpen(false);
   const [userName, setUserName] = useState<string | undefined>('');
   const [openEmailModal, setOpenEmailModal] = useState(false);
+  const [consecutiveSignDays, setConsecutiveSignDays] = useState<number | undefined>(undefined);
+  const [totalSignDays, setTotalSignDays] = useState<number | undefined>(undefined);
 
   const ref1 = useRef(null);
   const ref3 = useRef(null);
@@ -81,6 +87,7 @@ const UserInfo: React.FC = () => {
     },
   ];
 
+  // 加载用户数据
   const loadData = async () => {
     setLoading(true);
     const res = await getLoginUserUsingGet();
@@ -115,8 +122,28 @@ const UserInfo: React.FC = () => {
     }
   };
 
+  const getConsecutiveSignDays = async () => {
+    const res = await getConsecutiveSignDaysFromRedisUsingPost();
+    if (res.data && res.code === 0) {
+      setConsecutiveSignDays(res.data);
+    } else {
+      message.error(res.message);
+    }
+  };
+
+  const getTotalSignDays = async () => {
+    const res = await monthlySignTotalUsingPost();
+    if (res.data && res.code === 0) {
+      setTotalSignDays(res.data);
+    } else {
+      message.error(res.message);
+    }
+  };
+
   useEffect(() => {
     loadData();
+    getConsecutiveSignDays();
+    getTotalSignDays();
   }, []);
 
   const getBase64 = (file: RcFile): Promise<string> =>
@@ -127,6 +154,7 @@ const UserInfo: React.FC = () => {
       reader.onerror = (error) => reject(error);
     });
 
+  // 预览图片
   const handlePreview = async (file: UploadFile) => {
     if (!file.url && !file.preview) {
       file.preview = await getBase64(file.originFileObj as RcFile);
@@ -145,6 +173,7 @@ const UserInfo: React.FC = () => {
     );
   };
 
+  // 文件上传前的校验
   const beforeUpload = async (file: RcFile) => {
     const fileType = unloadFileTypeList.includes(file.type);
     if (!fileType) {
@@ -170,6 +199,7 @@ const UserInfo: React.FC = () => {
     return fileType && isLt2M;
   };
 
+  // 更新用户凭证
   const updateVoucher = async () => {
     setVoucherLoading(true);
     const res = await updateVoucherUsingPost();
@@ -182,6 +212,7 @@ const UserInfo: React.FC = () => {
     }
   };
 
+  // 更新用户信息
   const updateUserInfo = async () => {
     let avatarUrl = '';
     if (fileList && fileList[0] && valueLength(fileList[0].url)) {
@@ -199,6 +230,7 @@ const UserInfo: React.FC = () => {
     }
   };
 
+  // 文件上传配置
   const props: UploadProps = {
     name: 'file',
     withCredentials: true,
@@ -256,6 +288,7 @@ const UserInfo: React.FC = () => {
     },
   };
 
+  // 绑定邮箱
   const handleBindEmailSubmit = async (values: API.UserBindEmailRequest) => {
     try {
       // 绑定邮箱
@@ -271,6 +304,8 @@ const UserInfo: React.FC = () => {
       message.error(defaultLoginFailureMessage);
     }
   };
+
+  // 解绑邮箱
   const handleUnBindEmailSubmit = async (values: API.UserUnBindEmailRequest) => {
     try {
       // 绑定邮箱
@@ -284,6 +319,21 @@ const UserInfo: React.FC = () => {
       message.error(defaultLoginFailureMessage);
     }
   };
+
+  // 每日签到
+  const handleDailyCheckIn = async () => {
+    setDailyCheckInLoading(true);
+    try {
+      const res = await monthlySignUsingPost();
+      if (res.data && res.code === 0) {
+        await loadData();
+        message.success('签到成功');
+      }
+    } finally {
+      setDailyCheckInLoading(false);
+    }
+  };
+
   return (
     <Spin spinning={loading}>
       <ProCard type="inner" bordered direction="column">
@@ -291,7 +341,7 @@ const UserInfo: React.FC = () => {
           ref={ref1}
           extra={
             <>
-              <Tooltip title={'用于接收订单信息'}>
+              <Tooltip title={''}>
                 <Button
                   onClick={() => {
                     setOpenEmailModal(true);
@@ -361,33 +411,35 @@ const UserInfo: React.FC = () => {
           </Descriptions>
         </ProCard>
         <br />
-        <Button
-          loading={dailyCheckInLoading}
-          style={{
-            width: '10%',
-            marginRight: 10,
-            // 减小内边距
-            padding: '6px 12px',
-            // 减小字体大小
-            fontSize: '14px',
-          }}
-          type={'primary'}
-          onClick={async () => {
-            setDailyCheckInLoading(true);
-            const res = await monthlySignUsingPost();
-            if (res.data && res.code === 0) {
-              const res = await getLoginUserUsingGet();
-              if (res.data && res.code === 0) {
-                message.success('签到成功');
-              }
-            }
-            setTimeout(() => {
-              setDailyCheckInLoading(false);
-            }, 1000);
-          }}
+        <ProCard
+          bordered
+          type="inner"
+          extra={
+            <>
+              <Tooltip title={''}>
+                <Button loading={dailyCheckInLoading} type={'primary'} onClick={handleDailyCheckIn}>
+                  <Tooltip title={<>{<p>每日签到可获取10金币</p>}</>}>每日签到</Tooltip>
+                </Button>
+              </Tooltip>
+            </>
+          }
         >
-          <Tooltip title={<>{/*<p>每日签到可获取10积分</p>*/}</>}>每日签到</Tooltip>
-        </Button>
+          <Descriptions column={1}>
+            <div>
+              <h4>连续签到天数：</h4>
+              <Paragraph>{consecutiveSignDays}</Paragraph>
+            </div>
+            <div>
+              <h4>累计签到天数：</h4>
+              <Paragraph>{totalSignDays}</Paragraph>
+            </div>
+            <div>
+              <h4>我的金币：</h4>
+              <Paragraph>{loginUser?.balance}币</Paragraph>
+            </div>
+          </Descriptions>
+        </ProCard>
+        <br />
       </ProCard>
       <br />
       <ProCard

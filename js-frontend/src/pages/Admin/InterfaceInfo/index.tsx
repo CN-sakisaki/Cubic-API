@@ -213,6 +213,7 @@ const TableList: React.FC = () => {
       dataIndex: 'requestParams',
       hideInSearch: true,
       valueType: 'jsonCode',
+      hideInTable: true,
     },
     {
       title: '请求头',
@@ -242,6 +243,20 @@ const TableList: React.FC = () => {
           status: 'Processing',
         },
       },
+    },
+    {
+      title: '总调用次数',
+      dataIndex: 'totalInvokes',
+      valueType: 'text',
+      hideInForm: true,
+      hideInSearch: true,
+      render: (totalInvokes) => `${totalInvokes}  次`,
+    },
+    {
+      title: '调用所需金币数',
+      dataIndex: 'reduceScore',
+      valueType: 'text',
+      render: (reduceScore) => `${reduceScore}  个`,
     },
     {
       title: '创建时间',
