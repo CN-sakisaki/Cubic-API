@@ -1,8 +1,9 @@
-import { listTopInvokeInterfaceInfoUsingGet } from '@/services/js-backend/analysisController';
-import { PageContainer } from '@ant-design/pro-components';
+import {listTopInvokeInterfaceInfoUsingGet} from '@/services/js-backend/analysisController';
+import {PageContainer} from '@ant-design/pro-components';
 import '@umijs/max';
+import {Spin} from 'antd';
 import ReactECharts from 'echarts-for-react';
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useState} from 'react';
 
 /**
  * 接口分析
@@ -10,19 +11,25 @@ import React, { useEffect, useState } from 'react';
  */
 const InterfaceAnalysis: React.FC = () => {
   const [data, setData] = useState<API.InterfaceInfoVO[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      listTopInvokeInterfaceInfoUsingGet().then((res) => {
+    const fetchData = async () => {
+      try {
+        const res = await listTopInvokeInterfaceInfoUsingGet();
         if (res.data) {
           setData(res.data);
         }
-      });
-    } catch (e: any) {}
-    // todo 从远程获取数据
+      } catch (e: any) {
+        setError(e.message || '数据获取失败');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
-  // 映射：{ value: 1048, name: 'Search Engine' },
   const chartData = data.map((item) => {
     return {
       value: item.totalNum,
@@ -37,6 +44,9 @@ const InterfaceAnalysis: React.FC = () => {
     },
     tooltip: {
       trigger: 'item',
+      formatter: (params: any) => {
+        return `${params.name}: ${params.value}`; // 直接显示接口名称和调用次数
+      },
     },
     legend: {
       orient: 'vertical',
@@ -44,7 +54,7 @@ const InterfaceAnalysis: React.FC = () => {
     },
     series: [
       {
-        name: 'Access From',
+        name: '接口信息', // 修改此处名称
         type: 'pie',
         radius: '70%',
         data: chartData,
@@ -61,8 +71,17 @@ const InterfaceAnalysis: React.FC = () => {
 
   return (
     <PageContainer>
-      <ReactECharts option={option} />
+      {loading ? (
+        <Spin tip="数据加载中..." />
+      ) : error ? (
+        <div style={{ color: 'red' }}>{error}</div>
+      ) : (
+        <>
+          <ReactECharts option={option} />
+        </>
+      )}
     </PageContainer>
   );
 };
+
 export default InterfaceAnalysis;
