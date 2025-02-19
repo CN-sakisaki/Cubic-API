@@ -75,7 +75,7 @@ public class ServiceController {
 
     @GetMapping("/horoscope")
     public ResultResponse getHoroscope(HoroscopeParams horoscopeParams) throws ApiException {
-        String response = get("https://v2.xxapi.cn/api/horoscope", horoscopeParams);
+        String response = get("http://v2.xxapi.cn/api/horoscope", horoscopeParams);
         Map<String, Object> fromResponse = responseToMap(response);
         // boolean success = (boolean) fromResponse.get("request_id");
         fromResponse.remove("msg");
