@@ -471,8 +471,6 @@ declare namespace API {
     id?: number;
     interfaceInfoId?: number;
     isDeleted?: number;
-    leftNum?: number;
-    status?: number;
     totalNum?: number;
     updateTime?: string;
     userId?: number;
