@@ -1,13 +1,16 @@
 package com.js.project.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.js.jsapicommon.model.entity.User;
 import com.js.project.common.ErrorCode;
 import com.js.project.constant.SignConstant;
 import com.js.project.exception.BusinessException;
 import com.js.project.mapper.MonthlySignRecordsMapper;
 import com.js.project.model.entity.MonthlySignRecords;
 import com.js.project.service.MonthlySignRecordsService;
+import com.js.project.service.UserService;
 import com.js.project.utils.RedissonLockUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -38,6 +41,9 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
     @Resource
     private RedissonLockUtils redissonLockUtils;
 
+    @Resource
+    private UserService userService;
+
     public MonthlySignRecordsServiceImpl(StringRedisTemplate stringRedisTemplate) {
         this.stringRedisTemplate = stringRedisTemplate;
     }
@@ -66,7 +72,7 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
             String consecutiveSignKey = generateConsecutiveSignKey(userId);
             int consecutiveSignDays = calculateConsecutiveSignDays(userId, dayOfMonth, consecutiveSignKey);
             stringRedisTemplate.opsForValue().set(consecutiveSignKey, String.valueOf(consecutiveSignDays), Duration.ofDays(2));
-
+            extracted(userId);
             // 异步同步签到记录到数据库
             CompletableFuture.runAsync(() -> syncSignRecordToDB(userId, getCurrentMonthYear()))
                     .exceptionally(e -> {
@@ -76,6 +82,17 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
         }, "签到失败,请稍后重试");
         log.info("用户 {} 签到成功，连续签到天数：{}", userId, getConsecutiveSignDaysFromRedis(generateConsecutiveSignKey(userId)));
         return true;
+    }
+
+    /**
+     * 签到成功添加10金币
+     * @param userId 用户Id
+     */
+    private void extracted(Long userId) {
+        User user = userService.getById(userId);
+        Long balance = user.getBalance();
+        user.setBalance(balance + 10);
+        userService.updateById(user);
     }
 
     /**
