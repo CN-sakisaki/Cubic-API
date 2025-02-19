@@ -9,10 +9,10 @@
             <result property="userId" column="userId" />
             <result property="signMonth" column="signMonth" />
             <result property="signStatus" column="signStatus" />
-            <result property="consecutiveSignDays" column="consecutiveSignDays" />
+            <result property="createTime" column="createTime" />
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,userId,signMonth,signStatus,consecutiveSignDays
+        id,userId,signMonth,signStatus,createTime
     </sql>
 </mapper>

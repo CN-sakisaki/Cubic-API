@@ -34,12 +34,12 @@ create table user
 
 create table monthly_sign_records
 (
-    id                  bigint auto_increment comment '主键Id'
+    id         bigint auto_increment comment '主键Id'
         primary key,
-    userId              bigint      not null comment '用户Id',
-    signMonth           varchar(10) not null comment '签到年月（yyyy-MM）',
-    signStatus          varchar(31) not null comment '该月每天的签到情况',
-    consecutiveSignDays varchar(5)  null comment '连续签到天数',
+    userId     bigint                             not null comment '用户Id',
+    signMonth  varchar(10)                        not null comment '签到年月（yyyy-MM）',
+    signStatus varchar(31)                        not null comment '该月每天的签到情况',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     constraint userId
         unique (userId, signMonth)
 )
@@ -81,8 +81,6 @@ create table user_interface_info
     userId          bigint                             not null comment '调用用户 Id',
     interfaceInfoId bigint                             not null comment '接口 Id',
     totalNum        int      default 0                 not null comment '总调用次数',
-    leftNum         int      default 0                 not null comment '剩余调用次数',
-    status          int      default 0                 not null comment '接口状态 （0-正常， 1-禁用）',
     createTime      datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime      datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDeleted       tinyint  default 0                 not null comment '是否删除(0-未删, 1-已删)'
