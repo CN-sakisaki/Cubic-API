@@ -17,6 +17,7 @@ spring:
     host: localhost
     port: 6379
     database: 4
+    password: JS285699
 logging:
   level:
     org:
