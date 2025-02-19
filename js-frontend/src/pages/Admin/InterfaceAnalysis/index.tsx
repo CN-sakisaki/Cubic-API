@@ -22,7 +22,7 @@ const InterfaceAnalysis: React.FC = () => {
           setData(res.data);
         }
       } catch (e: any) {
-        setError(e.message || '数据获取失败');
+        setError('数据获取失败');
       } finally {
         setLoading(false);
       }
