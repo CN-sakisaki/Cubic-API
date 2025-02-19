@@ -1,6 +1,6 @@
 package com.js.jsapicommon.service;
 
-import com.js.jsapicommon.model.entity.UserInterfaceInfo;
+
 
 /**
  * @author JianShang
@@ -17,6 +17,4 @@ public interface InnerUserInterfaceInfoService {
      * @return
      */
     boolean invokeCount(long interfaceInfoId, long userId);
-
-    UserInterfaceInfo interfaceCountJudgement(long interfaceInfoId, long userId);
 }

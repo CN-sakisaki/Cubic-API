@@ -17,4 +17,6 @@ public interface InnerUserService {
      * @return
      */
     User getInvokeUser(String accessKey);
+
+    void reduceBalance(long reduceScore, long userId, long balance);
 }

@@ -75,8 +75,6 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
      */
     private static final long FIVE_MINUTES = 5L * 60;
 
-    private static final String INTERFACE_HOST = "http://localhost:8123";
-
     private static final String GATEWAY_HOST = "https";
 
     private static final String GATEWAY_HTTP_HOST = "http";
@@ -140,9 +138,9 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
                 uri = uri.substring(0, index);
             }
 
-            if (uri.contains(GATEWAY_HTTP_HOST)) {
-                uri = uri.replace(GATEWAY_HTTP_HOST, GATEWAY_HOST);
-            }
+            // if (uri.contains(GATEWAY_HTTP_HOST)) {
+            //     uri = uri.replace(GATEWAY_HTTP_HOST, GATEWAY_HOST);
+            // }
             log.info("请求路径为：{}", uri);
             // 校验接口
             InterfaceInfo interfaceInfo = innerInterfaceInfoService.getInterfaceInfo(uri, method);
@@ -261,6 +259,8 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
                                         try {
                                             // 调用成功，接口调用次数 + 1
                                             innerUserInterfaceInfoService.invokeCount(interfaceInfo.getId(), user.getId());
+                                            innerUserService.reduceBalance(interfaceInfo.getReduceScore(), user.getId(), user.getBalance());
+                                            innerInterfaceInfoService.updateTotal(interfaceInfo.getId(),interfaceInfo.getTotalInvokes());
                                         } catch (Exception e) {
                                             log.error("invokeCount error", e);
                                         }

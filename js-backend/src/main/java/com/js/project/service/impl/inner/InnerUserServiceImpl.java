@@ -1,6 +1,7 @@
 package com.js.project.service.impl.inner;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.js.jsapicommon.model.entity.User;
 import com.js.jsapicommon.service.InnerUserService;
 import com.js.project.common.ErrorCode;
@@ -32,5 +33,13 @@ public class InnerUserServiceImpl implements InnerUserService {
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("accessKey", accessKey);
         return userMapper.selectOne(queryWrapper);
+    }
+
+    @Override
+    public void reduceBalance(long reduceScore, long userId, long balance) {
+        User user = userMapper.selectById(userId);
+        long newBalance = balance - reduceScore;
+        user.setBalance(newBalance);
+        userMapper.updateById(user);
     }
 }

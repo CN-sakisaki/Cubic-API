@@ -1,6 +1,7 @@
 package com.js.project.service.impl.inner;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.js.jsapicommon.model.entity.InterfaceInfo;
 import com.js.jsapicommon.service.InnerInterfaceInfoService;
 import com.js.project.common.ErrorCode;
@@ -33,6 +34,14 @@ public class InnerInterfaceInfoServiceImpl implements InnerInterfaceInfoService 
         queryWrapper.eq("url", url);
         queryWrapper.eq("method", method);
         return interfaceInfoMapper.selectOne(queryWrapper);
+    }
+
+    @Override
+    public void updateTotal(long interfaceInfoId, long totalInvokes) {
+        totalInvokes = totalInvokes + 1;
+        InterfaceInfo interfaceInfo = interfaceInfoMapper.selectById(interfaceInfoId);
+        interfaceInfo.setTotalInvokes(totalInvokes);
+        interfaceInfoMapper.updateById(interfaceInfo);
     }
 
 }
