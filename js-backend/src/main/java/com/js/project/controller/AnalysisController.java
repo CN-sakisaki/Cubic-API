@@ -58,11 +58,15 @@ public class AnalysisController {
             List<UserInterfaceInfo> interfaceInfoList = userInterfaceInfoMapper.listTopInvokeInterfaceInfo(5);
 
             // 构建接口信息VO列表，使用流式处理将接口信息映射为接口信息VO对象，并加入列表中
-            List<InterfaceInfoVO> interfaceInfoVOList = interfaceInfoList.stream().map(interfaceInfo -> {
+            List<InterfaceInfoVO> interfaceInfoVOList = interfaceInfoList.stream().map(userInterfaceInfo -> {
                 // 创建一个新的接口信息VO对象
                 InterfaceInfoVO interfaceInfoVO = new InterfaceInfoVO();
                 // 将调用次数设置到接口信息VO对象中
-                interfaceInfoVO.setTotalNum(interfaceInfo.getTotalNum());
+                InterfaceInfo interfaceInfo = interfaceInfoService.getById(userInterfaceInfo.getInterfaceInfoId());
+
+                interfaceInfoVO.setTotalNum(interfaceInfo.getTotalInvokes());
+                interfaceInfoVO.setName(interfaceInfo.getName());
+                interfaceInfoVO.setDescription(interfaceInfo.getDescription());
                 // 返回构建好的接口信息VO对象
                 return interfaceInfoVO;
             }).collect(Collectors.toList());
@@ -70,7 +74,7 @@ public class AnalysisController {
             return ResultUtils.success(interfaceInfoVOList);
         }
         List<InterfaceInfoVO> interfaceInfoVOList = new ArrayList<>(cachedMap.values());
-        interfaceInfoVOList.sort(Comparator.comparingInt(InterfaceInfoVO::getTotalNum).reversed());
+        interfaceInfoVOList.sort(Comparator.comparingLong(InterfaceInfoVO::getTotalNum).reversed());
         return ResultUtils.success(interfaceInfoVOList);
     }
 }
