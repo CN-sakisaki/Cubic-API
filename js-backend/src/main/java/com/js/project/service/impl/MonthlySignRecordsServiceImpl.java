@@ -68,7 +68,7 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
             stringRedisTemplate.opsForValue().set(consecutiveSignKey, String.valueOf(consecutiveSignDays), Duration.ofDays(2));
 
             // 异步同步签到记录到数据库
-            CompletableFuture.runAsync(() -> syncSignRecordToDB(userId, getCurrentMonthYear(), String.valueOf(consecutiveSignDays)))
+            CompletableFuture.runAsync(() -> syncSignRecordToDB(userId, getCurrentMonthYear()))
                     .exceptionally(e -> {
                         log.error("同步签到记录到数据库失败: 用户ID={}, 日期={}, {}", userId, getCurrentMonthYear(), e.getMessage());
                         return null;
@@ -127,9 +127,8 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
      *
      * @param userId              用户Id
      * @param signMonth           签到月份 (格式：yyyy-MM)
-     * @param consecutiveSignDays 连续签到天数
      */
-    private void syncSignRecordToDB(Long userId, String signMonth, String consecutiveSignDays) {
+    private void syncSignRecordToDB(Long userId, String signMonth) {
         String redisKey = generateSignKey(userId, LocalDate.now());
         int today = LocalDate.now().getDayOfMonth();
 
@@ -138,9 +137,9 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
         MonthlySignRecords record = monthlySignRecordsMapper.selectOne(queryWrapper);
 
         if (record != null) {
-            updateExistingRecord(record, redisKey, today, consecutiveSignDays);
+            updateExistingRecord(record, redisKey, today);
         } else {
-            insertNewRecord(userId, signMonth, redisKey, today, consecutiveSignDays);
+            insertNewRecord(userId, signMonth, redisKey, today);
         }
     }
 
@@ -150,9 +149,8 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
      * @param record              现有记录
      * @param redisKey            Redis 键
      * @param today               当前日期
-     * @param consecutiveSignDays 连续签到天数
      */
-    private void updateExistingRecord(MonthlySignRecords record, String redisKey, int today, String consecutiveSignDays) {
+    private void updateExistingRecord(MonthlySignRecords record, String redisKey, int today) {
         StringBuilder signStatusBuilder = new StringBuilder(record.getSignStatus());
         boolean isSignedToday = Boolean.TRUE.equals(stringRedisTemplate.opsForValue().getBit(redisKey, today - 1));
 
@@ -169,7 +167,6 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
         }
 
         record.setSignStatus(signStatusBuilder.toString());
-        record.setConsecutiveSignDays(consecutiveSignDays);
         monthlySignRecordsMapper.updateById(record);
     }
 
@@ -180,9 +177,8 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
      * @param signMonth           签到月份
      * @param redisKey            Redis 键
      * @param today               当前日期
-     * @param consecutiveSignDays 连续签到天数
      */
-    private void insertNewRecord(Long userId, String signMonth, String redisKey, int today, String consecutiveSignDays) {
+    private void insertNewRecord(Long userId, String signMonth, String redisKey, int today) {
         StringBuilder signStatusBuilder = new StringBuilder();
         for (int day = 1; day <= today; day++) {
             boolean isSigned = Boolean.TRUE.equals(stringRedisTemplate.opsForValue().getBit(redisKey, day - 1));
@@ -193,7 +189,6 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
         record.setUserId(userId);
         record.setSignMonth(signMonth);
         record.setSignStatus(signStatusBuilder.toString());
-        record.setConsecutiveSignDays(consecutiveSignDays);
         monthlySignRecordsMapper.insert(record);
     }
 

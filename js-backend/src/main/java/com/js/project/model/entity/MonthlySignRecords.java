@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.Date;
 
 
 /**
@@ -43,8 +44,7 @@ public class MonthlySignRecords implements Serializable {
     private String signStatus;
 
     /**
-     * 连续签到天数
+     * 创建时间
      */
-    private String consecutiveSignDays;
-
+    private Date createTime;
 }
