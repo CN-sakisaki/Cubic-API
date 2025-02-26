@@ -1,6 +1,7 @@
 package com.js.project.controller;
 
 import cn.hutool.json.JSONUtil;
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -20,6 +21,7 @@ import com.js.project.annotation.RedisRateLimiter;
 import com.js.project.common.*;
 import com.js.project.constant.CommonConstant;
 import com.js.project.exception.BusinessException;
+import com.js.project.exception.SentinelGlobalBlockHandler;
 import com.js.project.model.dto.interfaceinfo.InterfaceInfoAddRequest;
 import com.js.project.model.dto.interfaceinfo.InterfaceInfoInvokeRequest;
 import com.js.project.model.dto.interfaceinfo.InterfaceInfoQueryRequest;
@@ -219,11 +221,10 @@ public class InterfaceInfoController {
      * 分页获取列表
      *
      * @param interfaceInfoQueryRequest
-     * @param request
      * @return BaseResponse<Page < InterfaceInfo>>
      */
     @GetMapping("/list/page")
-    public BaseResponse<Page<InterfaceInfo>> listInterfaceInfoByPage(InterfaceInfoQueryRequest interfaceInfoQueryRequest, HttpServletRequest request) {
+    public BaseResponse<Page<InterfaceInfo>> listInterfaceInfoByPage(InterfaceInfoQueryRequest interfaceInfoQueryRequest) {
         if (interfaceInfoQueryRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }

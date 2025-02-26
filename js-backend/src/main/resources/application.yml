@@ -19,11 +19,26 @@ spring:
     port: 6379
     host: localhost
     database: 0
+    password: JS285699
+  cloud:
+    sentinel:
+      transport:
+        dashboard: localhost:8888
+        port: 8719
+      eager: true                                     # 规则类型（flow/degrade/system/param-flow）
+      datasource:
+        flow-rule:
+          nacos:
+            server-addr: localhost:8848                           # Nacos地址（例: 127.0.0.1:8848）
+            groupId: SENTINEL_GROUP                              # 分组名
+            dataId: ${spring.application.name}-flow-rules         # 配置ID（建议应用名+规则类型）
+            data-type: json                                       # 规则格式
+            rule-type: flow
   mail:
     host: smtp.qq.com
-    username: 189444236@qq.com
-    password: fiqjqiwwgwrvbgbe
-    emailFrom: 189444236@qq.com
+    username:
+    password:
+    emailFrom:
     properties:
       mail:
         smtp:
@@ -31,11 +46,11 @@ spring:
             enable: true
 cos:
   client:
-    accessKey: xxx
-    secretKey: xxx
-    region: xxx
-    bucket: xxxx
-    cos-host: xxxx
+    accessKey:
+    secretKey:
+    region:
+    bucket:
+    cos-host: https://cos.website-of-js.cn
 server:
   port: 7529
   servlet:

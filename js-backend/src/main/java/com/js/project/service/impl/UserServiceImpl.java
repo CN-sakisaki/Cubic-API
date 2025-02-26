@@ -2,12 +2,14 @@ package com.js.project.service.impl;
 
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.crypto.digest.DigestUtil;
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.js.jsapicommon.model.entity.User;
 import com.js.project.common.ErrorCode;
 import com.js.project.config.EmailConfig;
 import com.js.project.exception.BusinessException;
+import com.js.project.exception.SentinelGlobalBlockHandler;
 import com.js.project.mapper.UserMapper;
 import com.js.project.model.dto.user.UserBindEmailRequest;
 import com.js.project.model.dto.user.UserEmailLoginRequest;
@@ -118,6 +120,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
+    @SentinelResource(blockHandler = "handler", blockHandlerClass = SentinelGlobalBlockHandler.class)
     public UserVO userLogin(String userAccount, String userPassword, HttpServletRequest request) {
         // 1. 校验
         if (StringUtils.isAnyBlank(userAccount, userPassword)) {
