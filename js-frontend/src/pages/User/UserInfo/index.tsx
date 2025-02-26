@@ -334,6 +334,9 @@ const UserInfo: React.FC = () => {
     }
   };
 
+  const displayValue =
+    consecutiveSignDays === null || consecutiveSignDays === undefined ? 0 : consecutiveSignDays;
+
   return (
     <Spin spinning={loading}>
       <ProCard type="inner" bordered direction="column">
@@ -427,7 +430,7 @@ const UserInfo: React.FC = () => {
           <Descriptions column={1}>
             <div>
               <h4>连续签到天数：</h4>
-              <Paragraph>{consecutiveSignDays}</Paragraph>
+              <Paragraph>{displayValue}</Paragraph>
             </div>
             <div>
               <h4>累计签到天数：</h4>

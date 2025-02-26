@@ -10,7 +10,7 @@ const Settings: ProLayoutProps & {
 } = {
   splitMenus: false,
   navTheme: 'light',
-  colorPrimary: '#13C2C2',
+  colorPrimary: '#40d5a6',
   layout: 'top',
   contentWidth: 'Fluid',
   fixedHeader: false,
