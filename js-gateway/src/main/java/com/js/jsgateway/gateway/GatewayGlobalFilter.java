@@ -138,9 +138,9 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
                 uri = uri.substring(0, index);
             }
 
-            // if (uri.contains(GATEWAY_HTTP_HOST)) {
-            //     uri = uri.replace(GATEWAY_HTTP_HOST, GATEWAY_HOST);
-            // }
+            if (uri.contains(GATEWAY_HTTP_HOST)) {
+                uri = uri.replace(GATEWAY_HTTP_HOST, GATEWAY_HOST);
+            }
             log.info("请求路径为：{}", uri);
             // 校验接口
             InterfaceInfo interfaceInfo = innerInterfaceInfoService.getInterfaceInfo(uri, method);
