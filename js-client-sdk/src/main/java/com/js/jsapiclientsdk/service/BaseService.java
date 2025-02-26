@@ -37,6 +37,8 @@ public abstract class BaseService implements ApiService {
      */
     private String gatewayHost = "https://api-gateway.website-of-js.cn";
 
+    // private String gatewayHost = "http://localhost:8090";
+
     @Override
     public <O, T extends ResultResponse> T request(JsApiClient jsApiClient, BaseRequest<O, T> request) throws ApiException {
         try {
