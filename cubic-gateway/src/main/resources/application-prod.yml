@@ -1,0 +1,46 @@
+# 公共配置文件
+spring:
+  cloud:
+    gateway:
+      default-filters:
+        - AddResponseHeader=source, gateway
+      routes:
+        - id: api_route
+          uri: http://localhost:8123
+          predicates:
+            - Path=/api/**
+#        - id: add_request_header_route
+#          uri: http://localhost:8123
+#          predicates:
+#            - Path=/api/**
+#          filters:
+#            - AddRequestHeader=yupi, swag
+#            - AddRequestParameter=name, dog
+#            - name: CircuitBreaker
+#              args:
+#                name: myCircuitBreaker
+#                fallbackUri: forward:/fallback
+#        - id: yupi-fallback
+#          uri: https://yupi.icu
+#          predicates:
+#            - Path=/fallback
+  redis:
+    host: 111.230.49.155
+    port: 6379
+    database: 4
+    password: JS285699
+logging:
+  level:
+    org:
+      springframework:
+        cloud:
+          gateway: error
+dubbo:
+  application:
+    name: dubbo-springboot-demo-provider
+  protocol:
+    name: dubbo
+    port: -1
+  registry:
+    id: nacos-registry
+    address: nacos://10.1.24.5:8848

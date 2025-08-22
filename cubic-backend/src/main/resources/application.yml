@@ -1,0 +1,80 @@
+spring:
+  application:
+    name: cubic-backend
+#   DataSource Config
+  datasource:
+    url: jdbc:mysql://localhost:3306/jsapi?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: JS285699
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  mvc:
+    path match:
+      matching-strategy: ANT_PATH_MATCHER
+  # session 失效时间（分钟）
+  session:
+    timeout: 86400
+    store-type: redis
+  # redis 配置
+  redis:
+    port: 6379
+    host: localhost
+    database: 0
+    password: JS285699
+  cloud:
+    sentinel:
+      transport:
+        dashboard: localhost:8888
+        port: 8719
+      eager: true                                     # 规则类型（flow/degrade/system/param-flow）
+      datasource:
+        flow-rule:
+          nacos:
+            server-addr: localhost:8848                           # Nacos地址（例: 127.0.0.1:8848）
+            groupId: SENTINEL_GROUP                              # 分组名
+            dataId: ${spring.application.name}-flow-rules         # 配置ID（建议应用名+规则类型）
+            data-type: json                                       # 规则格式
+            rule-type: flow
+  mail:
+    host: smtp.qq.com
+    username:
+    password:
+    emailFrom:
+    properties:
+      mail:
+        smtp:
+          ssl:
+            enable: true
+cos:
+  client:
+    accessKey:
+    secretKey:
+    region:
+    bucket:
+    cos-host: https://cos.website-of-js.cn
+server:
+  port: 7529
+  servlet:
+    context-path: /api
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: false
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: isDelete # 全局逻辑删除的实体字段名(since 3.3.0,配置后可以忽略不配置步骤2)
+      logic-delete-value: 1 # 逻辑已删除值(默认为 1)
+      logic-not-delete-value: 0 # 逻辑未删除值(默认为 0)
+# 仅供测试，实际应该根据登录用户获取对应的 ak、sk
+#yuapi:
+#  client:
+#    access-key: js
+#    secret-key: abcdefgh
+dubbo:
+  application:
+    name: dubbo-springboot-demo-provider
+  protocol:
+    name: dubbo
+    port: -1
+  registry:
+    id: nacos-registry
+    address: nacos://localhost:8848

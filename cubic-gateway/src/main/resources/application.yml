@@ -1,0 +1,36 @@
+# 公共配置文件
+server:
+  port: 8090
+spring:
+  cloud:
+    gateway:
+      default-filters:
+        - AddResponseHeader=source, gateway
+      routes:
+        - id: js-api-interface
+          # 当请求符合这个路由规则的条件时，网关会将请求转发到这个地址
+          uri: http://localhost:8123
+          #定义路由匹配的条件
+          predicates:
+            - Path=/api/**
+  redis:
+    host: localhost
+    port: 6379
+    database: 4
+    password: JS285699
+logging:
+  level:
+    org:
+      springframework:
+        cloud:
+          gateway: warn
+dubbo:
+  application:
+    name: dubbo-springboot-demo-provider
+  protocol:
+    name: dubbo
+    port: -1
+  registry:
+    id: nacos-registry
+    address: nacos://localhost:8848
+
