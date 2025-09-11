@@ -1,6 +1,5 @@
 package com.saki.apiproject.annotation;
 
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -20,12 +19,17 @@ public @interface RedisRateLimiter {
     String value();
 
     /**
-     *  限流阈值
+     * 令牌桶容量
      */
-    int limit();
+    int capacity();
 
     /**
-     * 时间窗口大小（秒），默认 10 秒
+     * 令牌生成速率（每秒生成的令牌数）
      */
-    int window() default 10;
+    int rate();
+
+    /**
+     * 获取令牌的超时时间（秒），默认0表示不等待直接返回
+     */
+    int timeout() default 0;
 }

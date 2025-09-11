@@ -1,24 +1,26 @@
 package com.saki.apiproject.aop;
 
 import com.saki.apiproject.annotation.RedisRateLimiter;
-
 import com.saki.common.common.ErrorCode;
 import com.saki.common.common.ResultUtils;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.redisson.api.RScoredSortedSet;
-import org.redisson.api.RedissonClient;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
 import javax.servlet.http.HttpServletRequest;
 import java.lang.reflect.Method;
-import java.time.Duration;
+import java.util.Collections;
 
 
 /**
- * 限流拦截器
+ * 限流拦截器（令牌桶算法）
  * @author sakisaki
  * @date 2025/2/16 12:58
  */
@@ -26,13 +28,20 @@ import java.time.Duration;
 @Component
 public class RedisRateLimiterInterceptor {
 
-    private final RedissonClient redissonClient;
-
     private final HttpServletRequest request;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private DefaultRedisScript<Long> tokenBucketScript;
 
-    public RedisRateLimiterInterceptor(RedissonClient redissonClient, HttpServletRequest request) {
-        this.redissonClient = redissonClient;
+    public RedisRateLimiterInterceptor(HttpServletRequest request, RedisTemplate<String, Object> redisTemplate) {
         this.request = request;
+        this.redisTemplate = redisTemplate;
+    }
+
+    @PostConstruct
+    public void init() {
+        tokenBucketScript = new DefaultRedisScript<>();
+        tokenBucketScript.setScriptSource(new ResourceScriptSource(new ClassPathResource("lua/token_bucket.lua")));
+        tokenBucketScript.setResultType(Long.class);
     }
 
     /**
@@ -54,35 +63,30 @@ public class RedisRateLimiterInterceptor {
         String clientId = request.getRemoteAddr();
 
         // 获取注解中的相关参数
-        int limit = redisRateLimiter.limit();
-        int window = redisRateLimiter.window();
+        int capacity = redisRateLimiter.capacity();
+        int rate = redisRateLimiter.rate();
+        int timeout = redisRateLimiter.timeout();
         String baseKey = redisRateLimiter.value();
-        // 获取当前时间戳（毫秒）
-        long currentTime = System.currentTimeMillis();
-        // 生成动态的限流键，结合当前时间窗口
-        long currentWindow = System.currentTimeMillis() / (window * 1000L);
-        String key = clientId + ":" + methodName + ":" + baseKey + ":" + currentWindow;
-        // 获取有序集合，用于存储请求记录
-        RScoredSortedSet<Long> sortedSet = redissonClient.getScoredSortedSet(key);
 
-        // 移除滑动窗口外的请求记录
-        // 当 window = 10 时，移除当前时间往前推 10 秒之前的所有请求记录，保证只统计当前 10 秒滑动窗口内的请求数量。
-        sortedSet.removeRangeByScore(0, true, currentTime - window * 1000L, false);
+        // 生成限流键
+        String key = "rate_limit:" + clientId + ":" + methodName + ":" + baseKey;
+        // 当前时间戳（秒）
+        long now = System.currentTimeMillis() / 1000;
 
-        // 统计滑动窗口内的请求数量
-        long count = sortedSet.size();
+        // 执行Lua脚本获取令牌
+        Long result = redisTemplate.execute(
+                tokenBucketScript,
+                Collections.singletonList(key),
+                capacity, rate, now, 1, timeout
+        );
 
-        if (count >= limit) {
+        // 返回值说明：1表示成功获取令牌，0表示获取令牌失败
+        if (result != null && result == 1) {
+            // 成功获取令牌，执行目标方法
+            return joinPoint.proceed();
+        } else {
+            // 获取令牌失败，返回限流提示
             return ResultUtils.error(ErrorCode.OPERATION_ERROR, "请求过于频繁，请稍后再试～");
         }
-
-        // 将当前请求的时间戳作为分数和元素添加到有序集合中，记录本次请求。
-        sortedSet.add(currentTime, currentTime);
-
-        // 设置有序集合的过期时间，避免数据无限增长
-        Duration expirationDuration = Duration.ofSeconds(window);
-        sortedSet.expire(expirationDuration);
-
-        return joinPoint.proceed();
     }
 }
