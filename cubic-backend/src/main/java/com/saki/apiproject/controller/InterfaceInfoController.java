@@ -1,18 +1,16 @@
 package com.saki.apiproject.controller;
 
 
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.gson.Gson;
-
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
-
-import cn.hutool.json.JSONUtil;
-
 import com.saki.apiproject.annotation.AuthCheck;
 import com.saki.apiproject.annotation.RedisRateLimiter;
+import com.saki.apiproject.cache.InterfaceCacheService;
 import com.saki.apiproject.common.DeleteRequest;
 import com.saki.apiproject.common.IdRequest;
 import com.saki.apiproject.constant.CommonConstant;
@@ -39,7 +37,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -63,13 +60,14 @@ public class InterfaceInfoController {
     private InterfaceInfoService interfaceInfoService;
 
     @Resource
-    private UserService userService;
+    private InterfaceCacheService interfaceCacheService;
 
     @Resource
-    private CubicApiClient cubicApiClient;
+    private UserService userService;
 
     private final Gson gson = new Gson();
-    @Autowired
+
+    @Resource
     private ApiService apiService;
 
     // region 增删改查
@@ -187,6 +185,10 @@ public class InterfaceInfoController {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         boolean result = interfaceInfoService.updateById(interfaceInfo);
+        if (result) {
+            // 数据库更新成功后，刷新缓存
+            interfaceCacheService.refreshInterfaceCache(interfaceInfo.getId());
+        }
         return ResultUtils.success(result);
     }
 
@@ -201,7 +203,7 @@ public class InterfaceInfoController {
         if (id <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        InterfaceInfo interfaceInfo = interfaceInfoService.getById(id);
+        InterfaceInfo interfaceInfo = interfaceCacheService.getInterfaceInfoById(id);
         return ResultUtils.success(interfaceInfo);
     }
 
@@ -230,6 +232,7 @@ public class InterfaceInfoController {
      * @return BaseResponse<Page < InterfaceInfo>>
      */
     @GetMapping("/list/page")
+    @RedisRateLimiter(value = "queueList", capacity = 5, rate = 1)
     public BaseResponse<Page<InterfaceInfo>> listInterfaceInfoByPage(InterfaceInfoQueryRequest interfaceInfoQueryRequest) {
         if (interfaceInfoQueryRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -313,7 +316,7 @@ public class InterfaceInfoController {
      * @return BaseResponse<Object>
      */
     @PostMapping("/invoke")
-    @RedisRateLimiter(value = "invoke",limit = 2)
+    @RedisRateLimiter(value = "invoke", capacity = 10, rate = 5)
     public BaseResponse<Object> invokeInterfaceInfo(@RequestBody InterfaceInfoInvokeRequest interfaceInfoInvokeRequest, HttpServletRequest request) {
         if (ObjectUtils.anyNull(interfaceInfoInvokeRequest, interfaceInfoInvokeRequest.getId()) || interfaceInfoInvokeRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -338,7 +341,8 @@ public class InterfaceInfoController {
             }
             requestParams = gson.toJson(jsonObject);
         }
-        Map<String, Object> params = new Gson().fromJson(requestParams, new TypeToken<Map<String, Object>>() {}.getType());
+        Map<String, Object> params = new Gson().fromJson(requestParams, new TypeToken<Map<String, Object>>() {
+        }.getType());
         User loginUser = userService.getLoginUser(request);
         String accessKey = loginUser.getAccessKey();
         String secretKey = loginUser.getSecretKey();
