@@ -5,27 +5,19 @@
 <mapper namespace="com.saki.apiproject.mapper.UserInterfaceInfoMapper">
 
     <resultMap id="BaseResultMap" type="com.saki.common.model.entity.UserInterfaceInfo">
-            <id property="id" column="id" jdbcType="BIGINT"/>
-            <result property="userId" column="userId" jdbcType="BIGINT"/>
-            <result property="interfaceInfoId" column="interfaceInfoId" jdbcType="BIGINT"/>
-            <result property="totalNum" column="totalNum" jdbcType="INTEGER"/>
-            <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
-            <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
-            <result property="isDeleted" column="isDeleted" jdbcType="TINYINT"/>
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="userId" column="userId" jdbcType="BIGINT"/>
+        <result property="interfaceInfoId" column="interfaceInfoId" jdbcType="BIGINT"/>
+        <result property="totalNum" column="totalNum" jdbcType="INTEGER"/>
+        <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
+        <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
+        <result property="isDeleted" column="isDeleted" jdbcType="TINYINT"/>
     </resultMap>
 
 
     <sql id="Base_Column_List">
-        id,userId,interfaceInfoId,
+        id
+        ,userId,interfaceInfoId,
         totalNum,createTime,updateTime,isDeleted
     </sql>
-
-    <select id="listTopInvokeInterfaceInfo" resultType="com.saki.common.model.entity.UserInterfaceInfo">
-        select interfaceInfoId, sum(totalNum) as totalNum
-        from user_interface_info
-        where isDeleted = 0  <!-- 添加 WHERE 子句过滤掉 isDeleted = 1 的数据 -->
-        group by interfaceInfoId
-        order by totalNum desc
-        limit #{limit};
-    </select>
 </mapper>
