@@ -4,8 +4,6 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.saki.common.model.entity.UserInterfaceInfo;
 
 
-import java.util.List;
-
 /**
  * @author JianShang
  * @version 1.0.0
@@ -14,7 +12,6 @@ import java.util.List;
  */
 public interface UserInterfaceInfoMapper extends BaseMapper<UserInterfaceInfo> {
 
-    List<UserInterfaceInfo> listTopInvokeInterfaceInfo(int limit);
 }
 
 
