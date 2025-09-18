@@ -16,4 +16,9 @@ public interface CacheExpireConstant {
      * 热点接口缓存过期时间（60 分钟）
      */
     long INTERFACE_INFO_EXPIRE = 10L;
+
+    /**
+     * Caffeine 接口详细信息缓存过期时间
+     */
+    long CAFFEINE_CACHE_EXPIRE = 5L;
 }
