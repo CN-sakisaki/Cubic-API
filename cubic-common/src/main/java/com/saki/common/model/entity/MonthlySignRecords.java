@@ -39,9 +39,9 @@ public class MonthlySignRecords implements Serializable {
     private String signMonth;
 
     /**
-     * 该月每天的签到情况
+     * 签到情况（BIT 位图，1 表示已签到，0 表示未签到）
      */
-    private String signStatus;
+    private Long signStatus;
 
     /**
      * 创建时间

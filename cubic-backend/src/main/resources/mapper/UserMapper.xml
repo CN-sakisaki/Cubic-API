@@ -5,27 +5,33 @@
 <mapper namespace="com.saki.apiproject.mapper.UserMapper">
 
     <resultMap id="BaseResultMap" type="com.saki.common.model.entity.User">
-        <id property="id" column="id" />
-        <result property="userName" column="userName" />
-        <result property="userAccount" column="userAccount" />
-        <result property="userAvatar" column="userAvatar" />
-        <result property="email" column="email" />
-        <result property="gender" column="gender" />
-        <result property="userRole" column="userRole" />
-        <result property="userPassword" column="userPassword" />
-        <result property="accessKey" column="accessKey" />
-        <result property="secretKey" column="secretKey" />
-        <result property="status" column="status" />
-        <result property="balance" column="balance" />
-        <result property="invitationCode" column="invitationCode" />
-        <result property="createTime" column="createTime" />
-        <result property="updateTime" column="updateTime" />
-        <result property="isDeleted" column="isDeleted" />
+        <id property="id" column="id"/>
+        <result property="userName" column="userName"/>
+        <result property="userAccount" column="userAccount"/>
+        <result property="userAvatar" column="userAvatar"/>
+        <result property="email" column="email"/>
+        <result property="gender" column="gender"/>
+        <result property="userRole" column="userRole"/>
+        <result property="userPassword" column="userPassword"/>
+        <result property="accessKey" column="accessKey"/>
+        <result property="secretKey" column="secretKey"/>
+        <result property="status" column="status"/>
+        <result property="balance" column="balance"/>
+        <result property="invitationCode" column="invitationCode"/>
+        <result property="createTime" column="createTime"/>
+        <result property="updateTime" column="updateTime"/>
+        <result property="isDeleted" column="isDeleted"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,userName,userAccount,userAvatar,email,gender,
+        id
+        ,userName,userAccount,userAvatar,email,gender,
         userRole,userPassword,accessKey,secretKey,status,
         balance,invitationCode,createTime,updateTime,isDeleted
     </sql>
+    <update id="updateUserBalance">
+        UPDATE user
+        SET balance = balance + #{amount}
+        WHERE id = #{userId}
+    </update>
 </mapper>

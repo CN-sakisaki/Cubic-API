@@ -2,17 +2,16 @@ package com.saki.apiproject.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-
 import com.saki.apiproject.constant.SignConstant;
 import com.saki.apiproject.mapper.MonthlySignRecordsMapper;
 import com.saki.apiproject.service.MonthlySignRecordsService;
 import com.saki.apiproject.service.UserService;
-import com.saki.apiproject.utils.RedissonLockUtils;
 import com.saki.common.common.BusinessException;
 import com.saki.common.common.ErrorCode;
 import com.saki.common.model.entity.MonthlySignRecords;
-import com.saki.common.model.entity.User;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -20,8 +19,8 @@ import javax.annotation.Resource;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author sakisaki
@@ -39,7 +38,7 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
     private final StringRedisTemplate stringRedisTemplate;
 
     @Resource
-    private RedissonLockUtils redissonLockUtils;
+    private RedissonClient redissonClient;
 
     @Resource
     private UserService userService;
@@ -49,6 +48,42 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
     }
 
     /**
+     * 签到奖励金币数
+     */
+    private static final int SIGN_REWARD_COIN = 10;
+
+    /**
+     *  签到 Redis Key 过期时间（天）
+     */
+    private static final int SIGN_KEY_EXPIRE_DAYS = 90;
+
+    /**
+     *  连续签到 Key 过期时间（天）
+     *  */
+    private static final int CONSECUTIVE_KEY_EXPIRE_DAYS = 2;
+
+    /**
+     *  Redisson 锁等待时间（秒）
+     *  */
+    private static final int LOCK_WAIT_TIME = 5;
+
+    /**
+     * Redisson 锁自动释放时间（秒）
+     * */
+    private static final int LOCK_LEASE_TIME = 10;
+
+    /**
+     *  日期格式
+     *  */
+    private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern(SignConstant.DATE_FORMAT);
+
+    /**
+     *  分布式锁前缀
+     *  */
+    private static final String LOCK_PREFIX = "sign:lock:";
+
+
+    /**
      * 用户签到
      *
      * @param userId 用户Id
@@ -56,85 +91,75 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
      */
     @Override
     public boolean sign(Long userId) {
-        String key = generateSignKey(userId, LocalDate.now());
-        int dayOfMonth = LocalDate.now().getDayOfMonth();
+        LocalDate today = LocalDate.now();
+        String signKey = generateSignKey(userId, today);
+        int dayOfMonth = today.getDayOfMonth();
 
-        if (isSigned(userId, dayOfMonth)) {
+        if (isSigned(userId, today)) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "今日已签到");
         }
 
-        // 使用分布式锁保证原子性
-        redissonLockUtils.redissonDistributedLocks(("sign" + userId).intern(), () -> {
-            // 执行签到操作
-            stringRedisTemplate.opsForValue().setBit(key, dayOfMonth - 1, true);
+        RLock lock = redissonClient.getLock(LOCK_PREFIX + userId);
+        try {
+            if (!lock.tryLock(LOCK_WAIT_TIME, LOCK_LEASE_TIME, TimeUnit.SECONDS)) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "签到失败，请稍后重试");
+            }
+
+            // 执行签到：写入 Redis bitmap
+            stringRedisTemplate.opsForValue().setBit(signKey, dayOfMonth - 1, true);
+            stringRedisTemplate.expire(signKey, SIGN_KEY_EXPIRE_DAYS, TimeUnit.DAYS);
 
             // 更新连续签到天数
-            String consecutiveSignKey = generateConsecutiveSignKey(userId);
-            int consecutiveSignDays = calculateConsecutiveSignDays(userId, dayOfMonth, consecutiveSignKey);
-            stringRedisTemplate.opsForValue().set(consecutiveSignKey, String.valueOf(consecutiveSignDays), Duration.ofDays(2));
-            extracted(userId);
-            // 异步同步签到记录到数据库
+            String consecutiveKey = generateConsecutiveSignKey(userId);
+            int consecutiveDays = calculateConsecutiveSignDays(userId, today, consecutiveKey);
+            stringRedisTemplate.opsForValue().set(consecutiveKey, String.valueOf(consecutiveDays), Duration.ofDays(CONSECUTIVE_KEY_EXPIRE_DAYS));
+
+            // 增加金币奖励
+            userService.updateUserBalance(userId, SIGN_REWARD_COIN);
+
+            // 异步同步数据库
             CompletableFuture.runAsync(() -> syncSignRecordToDB(userId, getCurrentMonthYear()))
                     .exceptionally(e -> {
-                        log.error("同步签到记录到数据库失败: 用户ID={}, 日期={}, {}", userId, getCurrentMonthYear(), e.getMessage());
+                        log.error("同步签到记录失败: userId={}, month={}, error={}", userId, getCurrentMonthYear(), e.getMessage(), e);
                         return null;
                     });
-        }, "签到失败,请稍后重试");
-        log.info("用户 {} 签到成功，连续签到天数：{}", userId, getConsecutiveSignDaysFromRedis(generateConsecutiveSignKey(userId)));
-        return true;
+
+            log.info("用户 {} 签到成功，连续签到天数：{}", userId, consecutiveDays);
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "签到失败，请重试");
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
     }
 
     /**
-     * 签到成功添加10金币
-     * @param userId 用户Id
-     */
-    private void extracted(Long userId) {
-        User user = userService.getById(userId);
-        Long balance = user.getBalance();
-        user.setBalance(balance + 10);
-        userService.updateById(user);
-    }
-
-    /**
-     * 检查用户是否已签到
+     * 检查用户是否已签到（支持跨月）
      *
      * @param userId 用户Id
-     * @param day    日期
+     * @param date   指定日期
      * @return boolean
      */
     @Override
-    public boolean isSigned(Long userId, int day) {
-        String key = generateSignKey(userId, LocalDate.now().withDayOfMonth(day));
-        return Boolean.TRUE.equals(stringRedisTemplate.opsForValue().getBit(key, day - 1));
+    public boolean isSigned(Long userId, LocalDate date) {
+        String key = generateSignKey(userId, date);
+        return Boolean.TRUE.equals(stringRedisTemplate.opsForValue().getBit(key, date.getDayOfMonth() - 1));
     }
 
     /**
      * 计算连续签到天数
-     *
-     * @param userId            用户Id
-     * @param dayOfMonth        当前日期
-     * @param consecutiveSignKey Redis 键
-     * @return int
      */
-    private int calculateConsecutiveSignDays(Long userId, int dayOfMonth, String consecutiveSignKey) {
+    private int calculateConsecutiveSignDays(Long userId, LocalDate today, String consecutiveSignKey) {
         Integer consecutiveSignDays = getConsecutiveSignDaysFromRedis(consecutiveSignKey);
         if (consecutiveSignDays == null || consecutiveSignDays == 0) {
             return 1;
         }
 
-        // 判断昨天是否签到
-        boolean wasSignedYesterday = false;
-        if (dayOfMonth > 1) {
-            // 如果是当月第 2 天及以后，直接检查昨天是否签到
-            wasSignedYesterday = isSigned(userId, dayOfMonth - 1);
-        } else {
-            // 如果是当月第 1 天，需要检查上个月的最后一天是否签到
-            LocalDate today = LocalDate.now();
-            LocalDate lastDayOfLastMonth = today.minusMonths(1).withDayOfMonth(today
-                    .minusMonths(1)
-                    .lengthOfMonth());
-            wasSignedYesterday = isSigned(userId, lastDayOfLastMonth.getDayOfMonth());
-        }
+        LocalDate yesterday = today.minusDays(1);
+        boolean wasSignedYesterday = isSigned(userId, yesterday);
 
         return wasSignedYesterday ? consecutiveSignDays + 1 : 1;
     }
@@ -168,22 +193,14 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
      * @param today               当前日期
      */
     private void updateExistingRecord(MonthlySignRecords record, String redisKey, int today) {
-        StringBuilder signStatusBuilder = new StringBuilder(record.getSignStatus());
         boolean isSignedToday = Boolean.TRUE.equals(stringRedisTemplate.opsForValue().getBit(redisKey, today - 1));
+        long status = record.getSignStatus() == null ? 0L : record.getSignStatus();
 
-        // 补全未签到的天数
-        if (today > record.getSignStatus().length()) {
-            for (int day = record.getSignStatus().length(); day < today - 1; day++) {
-                signStatusBuilder.append("0");
-            }
+        if (isSignedToday) {
+            status |= (1L << (today - 1));
         }
 
-        // 更新今天的签到状态
-        if (signStatusBuilder.length() == today - 1 && isSignedToday) {
-            signStatusBuilder.append("1");
-        }
-
-        record.setSignStatus(signStatusBuilder.toString());
+        record.setSignStatus(status);
         monthlySignRecordsMapper.updateById(record);
     }
 
@@ -196,28 +213,32 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
      * @param today               当前日期
      */
     private void insertNewRecord(Long userId, String signMonth, String redisKey, int today) {
-        StringBuilder signStatusBuilder = new StringBuilder();
+        long status = 0L;
         for (int day = 1; day <= today; day++) {
             boolean isSigned = Boolean.TRUE.equals(stringRedisTemplate.opsForValue().getBit(redisKey, day - 1));
-            signStatusBuilder.append(isSigned ? "1" : "0");
+            if (isSigned) {
+                // 第 day 天设为 1
+                status |= (1L << (day - 1));
+            }
         }
 
         MonthlySignRecords record = new MonthlySignRecords();
         record.setUserId(userId);
         record.setSignMonth(signMonth);
-        record.setSignStatus(signStatusBuilder.toString());
+        record.setSignStatus(status);
         monthlySignRecordsMapper.insert(record);
     }
+
 
     /**
      * 生成 Redis 键
      *
      * @param userId    用户Id
-     * @param signMonth 日期
+     * @param date 日期
      * @return String
      */
-    private String generateSignKey(Long userId, LocalDate signMonth) {
-        return SignConstant.SIGN_KEY_PREFIX + signMonth.format(DateTimeFormatter.ofPattern(SignConstant.DATE_FORMAT)) + ":" + userId;
+    private String generateSignKey(Long userId, LocalDate date) {
+        return String.format("%s:%s:%d", SignConstant.SIGN_KEY_PREFIX, date.format(MONTH_FORMATTER), userId);
     }
 
     /**
@@ -226,7 +247,7 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
      * @return String
      */
     private String getCurrentMonthYear() {
-        return LocalDate.now().format(DateTimeFormatter.ofPattern(SignConstant.DATE_FORMAT));
+        return LocalDate.now().format(MONTH_FORMATTER);
     }
 
     /**
@@ -237,15 +258,7 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
      */
     @Override
     public int countTotalSignDays(Long userId) {
-        List<MonthlySignRecords> records = monthlySignRecordsMapper
-                .selectList(new QueryWrapper<MonthlySignRecords>().eq("userId", userId));
-        return records.stream()
-                .mapToInt(record ->
-                        (int) record.getSignStatus()
-                                .chars()
-                                .filter(c -> c == '1')
-                                .count())
-                .sum();
+        return monthlySignRecordsMapper.countTotalSignDays(userId);
     }
 
     /**
@@ -256,8 +269,8 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
      */
     @Override
     public Integer getConsecutiveSignDaysFromRedis(String consecutiveSignKey) {
-        String consecutiveSignDaysStr = stringRedisTemplate.opsForValue().get(consecutiveSignKey);
-        return consecutiveSignDaysStr != null ? Integer.parseInt(consecutiveSignDaysStr) : null;
+        String days = stringRedisTemplate.opsForValue().get(consecutiveSignKey);
+        return days != null ? Integer.parseInt(days) : null;
     }
 
     /**
@@ -267,6 +280,6 @@ public class MonthlySignRecordsServiceImpl extends ServiceImpl<MonthlySignRecord
      * @return String
      */
     private String generateConsecutiveSignKey(Long userId) {
-        return SignConstant.CONSECUTIVE_SIGN_PREFIX + userId + SignConstant.CONSECUTIVE_SIGN_DAYS;
+        return String.format("%s:%d:%s", SignConstant.CONSECUTIVE_SIGN_PREFIX, userId, SignConstant.CONSECUTIVE_SIGN_DAYS);
     }
 }

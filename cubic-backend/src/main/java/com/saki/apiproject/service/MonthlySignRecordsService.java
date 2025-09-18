@@ -3,6 +3,8 @@ package com.saki.apiproject.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.saki.common.model.entity.MonthlySignRecords;
 
+import java.time.LocalDate;
+
 
 /**
  * @author jianshang
@@ -21,10 +23,10 @@ public interface MonthlySignRecordsService extends IService<MonthlySignRecords> 
     /**
      * 检查本月指定日期用户是否已经签到
      * @param userId 用户Id
-     * @param day 日期
+     * @param date 日期
      * @return boolean
      */
-    boolean isSigned(Long userId, int day);
+    boolean isSigned(Long userId, LocalDate date);
 
     /**
      * 计算用户累计签到天数

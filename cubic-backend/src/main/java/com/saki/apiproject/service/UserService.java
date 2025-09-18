@@ -2,13 +2,11 @@ package com.saki.apiproject.service;
 
 
 import com.baomidou.mybatisplus.extension.service.IService;
-
 import com.saki.apiproject.model.dto.user.UserBindEmailRequest;
 import com.saki.apiproject.model.dto.user.UserEmailLoginRequest;
 import com.saki.apiproject.model.dto.user.UserUnBindEmailRequest;
 import com.saki.apiproject.model.vo.UserVO;
 import com.saki.common.model.entity.User;
-
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -90,4 +88,12 @@ public interface UserService extends IService<User> {
      * @return UserVO
      */
     UserVO updateVoucher(User user);
+
+    /**
+     * 增加用户余额
+     *
+     * @param userId 用户ID
+     * @param amount 增加金额
+     */
+    void updateUserBalance(Long userId, int amount);
 }
