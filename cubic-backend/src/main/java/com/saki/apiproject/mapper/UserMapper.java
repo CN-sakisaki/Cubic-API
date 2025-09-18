@@ -2,6 +2,7 @@ package com.saki.apiproject.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.saki.common.model.entity.User;
+import org.springframework.data.repository.query.Param;
 
 
 /**
@@ -12,6 +13,7 @@ import com.saki.common.model.entity.User;
  */
 public interface UserMapper extends BaseMapper<User> {
 
+    int updateUserBalance(@Param("userId") Long userId, @Param("amount") int amount);
 }
 
 

@@ -5,7 +5,6 @@ import cn.hutool.crypto.digest.DigestUtil;
 import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-
 import com.saki.apiproject.config.EmailConfig;
 import com.saki.apiproject.exception.SentinelGlobalBlockHandler;
 import com.saki.apiproject.mapper.UserMapper;
@@ -27,6 +26,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
 
 import javax.annotation.Resource;
@@ -258,6 +258,22 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         UserVO userVO = new UserVO();
         BeanUtils.copyProperties(user, userVO);
         return userVO;
+    }
+
+    /**
+     * 增加用户余额
+     *
+     * @param userId 用户ID
+     * @param amount 增加金额
+     */
+    @Override
+    @Transactional
+    public void updateUserBalance(Long userId, int amount) {
+        // 使用 SQL 增量更新，避免并发覆盖
+        int rows = userMapper.updateUserBalance(userId, amount);
+        if (rows == 0) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新用户余额失败");
+        }
     }
 
     /**

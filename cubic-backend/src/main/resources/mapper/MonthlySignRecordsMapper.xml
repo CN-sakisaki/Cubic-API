@@ -5,14 +5,20 @@
 <mapper namespace="com.saki.apiproject.mapper.MonthlySignRecordsMapper">
 
     <resultMap id="BaseResultMap" type="com.saki.common.model.entity.MonthlySignRecords">
-            <id property="id" column="id" />
-            <result property="userId" column="userId" />
-            <result property="signMonth" column="signMonth" />
-            <result property="signStatus" column="signStatus" />
-            <result property="createTime" column="createTime" />
+        <id property="id" column="id"/>
+        <result property="userId" column="userId"/>
+        <result property="signMonth" column="signMonth"/>
+        <result property="signStatus" column="signStatus"/>
+        <result property="createTime" column="createTime"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,userId,signMonth,signStatus,createTime
+        id
+        ,userId,signMonth,signStatus,createTime
     </sql>
+    <select id="countTotalSignDays" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(BIT_COUNT(signStatus)), 0)
+        FROM monthly_sign_records
+        WHERE userId = #{userId}
+    </select>
 </mapper>
