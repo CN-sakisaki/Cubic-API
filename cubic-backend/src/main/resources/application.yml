@@ -1,7 +1,7 @@
 spring:
   application:
     name: cubic-backend
-#   DataSource Config
+  #   DataSource Config
   datasource:
     url: jdbc:mysql://localhost:3306/jsapi?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: root
@@ -64,11 +64,8 @@ mybatis-plus:
       logic-delete-field: isDelete # 全局逻辑删除的实体字段名(since 3.3.0,配置后可以忽略不配置步骤2)
       logic-delete-value: 1 # 逻辑已删除值(默认为 1)
       logic-not-delete-value: 0 # 逻辑未删除值(默认为 0)
-# 仅供测试，实际应该根据登录用户获取对应的 ak、sk
-#yuapi:
-#  client:
-#    access-key: js
-#    secret-key: abcdefgh
+cubic:
+  gatewayHost: http://localhost:8090
 dubbo:
   application:
     name: dubbo-springboot-demo-provider

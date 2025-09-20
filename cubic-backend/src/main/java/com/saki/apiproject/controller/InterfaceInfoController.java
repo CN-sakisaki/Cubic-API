@@ -30,6 +30,7 @@ import com.saki.common.model.dto.ResponseParamsField;
 import com.saki.common.model.entity.InterfaceInfo;
 import com.saki.common.model.entity.User;
 import com.saki.cubicapiclientsdk.client.CubicApiClient;
+import com.saki.cubicapiclientsdk.factory.CubicApiClientFactory;
 import com.saki.cubicapiclientsdk.model.request.CurrentRequest;
 import com.saki.cubicapiclientsdk.model.response.ResultResponse;
 import com.saki.cubicapiclientsdk.service.ApiService;
@@ -61,6 +62,9 @@ public class InterfaceInfoController {
 
     @Resource
     private InterfaceCacheService interfaceCacheService;
+
+    @Resource
+    private CubicApiClientFactory cubicApiClientFactory;
 
     @Resource
     private UserService userService;
@@ -343,11 +347,10 @@ public class InterfaceInfoController {
         }
         Map<String, Object> params = new Gson().fromJson(requestParams, new TypeToken<Map<String, Object>>() {
         }.getType());
+        
         User loginUser = userService.getLoginUser(request);
-        String accessKey = loginUser.getAccessKey();
-        String secretKey = loginUser.getSecretKey();
         try {
-            CubicApiClient cubicApiClient = new CubicApiClient(accessKey, secretKey);
+            CubicApiClient cubicApiClient = cubicApiClientFactory.newCubicClient(loginUser.getAccessKey(), loginUser.getSecretKey());
             CurrentRequest currentRequest = new CurrentRequest();
             currentRequest.setMethod(interfaceInfo.getMethod());
             currentRequest.setPath(interfaceInfo.getUrl());
