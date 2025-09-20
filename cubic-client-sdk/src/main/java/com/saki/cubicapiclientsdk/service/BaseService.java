@@ -31,40 +31,25 @@ import java.util.stream.Collectors;
 @Slf4j
 @Data
 public abstract class BaseService implements ApiService {
-    private CubicApiClient cubicApiClient;
-    /**
-     * 网关HOST
-     */
-    private String gatewayHost = "https://api-gateway.website-of-js.cn";
-
-    // private String gatewayHost = "http://localhost:8090";
 
     @Override
     public <O, T extends ResultResponse> T request(CubicApiClient cubicApiClient, BaseRequest<O, T> request) throws ApiException {
         try {
             checkConfig(cubicApiClient);
-            return res(request);
+            return res(request, cubicApiClient);
         } catch (Exception e) {
             throw new ApiException(ErrorCode.OPERATION_ERROR, e.getMessage());
         }
     }
 
-    @Override
-    public <O, T extends ResultResponse> T request(BaseRequest<O, T> request) throws ApiException {
-        return res(request);
-    }
-
     /**
      * 检查配置
-     * @param cubicApiClient JsApi客户端
+     * @param cubicApiClient CubicApi客户端
      * @throws ApiException 自定义异常
      */
     private void checkConfig(CubicApiClient cubicApiClient) throws ApiException {
-        if (this.cubicApiClient == null && this.getCubicApiClient() == null) {
+        if (cubicApiClient == null || StringUtils.isAnyBlank(cubicApiClient.getAccessKey(), cubicApiClient.getSecretKey())) {
             throw new ApiException(ErrorCode.NO_AUTH_ERROR, "请先配置密钥AccessKey/SecretKey");
-        }
-        if (cubicApiClient != null && !StringUtils.isAnyBlank(cubicApiClient.getAccessKey(), cubicApiClient.getSecretKey())) {
-            this.setCubicApiClient(cubicApiClient);
         }
     }
 
@@ -75,13 +60,15 @@ public abstract class BaseService implements ApiService {
      * @param path    路径
      * @return {@link String}
      */
-    private <O, T extends ResultResponse> String splicingGetRequest(BaseRequest<O, T> request, String path) {
+    private <O, T extends ResultResponse> String splicingGetRequest(BaseRequest<O, T> request, String path, CubicApiClient cubicApiClient) {
         // 先移除请求参数Map中的空值参数 ""，避免路径后面出现 ?= 情况
-        Map<String, Object> filteredParams = request.getRequestParams().entrySet().stream()
-                .filter(entry -> StringUtils.isNotEmpty(entry.getValue().toString()))
+        Map<String, Object> filteredParams = request.getRequestParams()
+                .entrySet()
+                .stream()
+                .filter(entry -> entry.getValue() != null && StringUtils.isNotEmpty(entry.getValue().toString()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-        StringBuilder urlBuilder = new StringBuilder(gatewayHost);
+        StringBuilder urlBuilder = new StringBuilder(cubicApiClient.getGatewayHost());
         // urlBuilder最后是/结尾且path以/开头的情况下，去掉urlBuilder结尾的/
         if (urlBuilder.toString().endsWith("/") && path.startsWith("/")) {
             urlBuilder.setLength(urlBuilder.length() - 1);
@@ -106,7 +93,7 @@ public abstract class BaseService implements ApiService {
     }
 
     /**
-     * 获取请求头
+     * 构建请求头
      *
      * @param body        请求体
      * @param cubicApiClient jsApi客户端
@@ -129,7 +116,7 @@ public abstract class BaseService implements ApiService {
      * @return {@link HttpResponse}
      * @throws ApiException 自定义异常
      */
-    private <O, T extends ResultResponse> HttpRequest getHttpRequestByRequestMethod(BaseRequest<O, T> request) throws ApiException {
+    private <O, T extends ResultResponse> HttpRequest getHttpRequestByRequestMethod(BaseRequest<O, T> request, CubicApiClient cubicApiClient) throws ApiException {
         if (ObjectUtils.isEmpty(request)) {
             throw new ApiException(ErrorCode.OPERATION_ERROR, "请求参数错误");
         }
@@ -143,18 +130,18 @@ public abstract class BaseService implements ApiService {
             throw new ApiException(ErrorCode.OPERATION_ERROR, "请求路径不存在");
         }
         // 去除路径中网关主机相关前缀
-        if (path.startsWith(gatewayHost)) {
-            path = path.substring(gatewayHost.length());
+        if (path.startsWith(cubicApiClient.getGatewayHost())) {
+            path = path.substring(cubicApiClient.getGatewayHost().length());
         }
         log.info("请求方法：{}，请求路径：{}，请求参数：{}", method, path, request.getRequestParams());
         HttpRequest httpRequest;
         switch (method) {
             case "GET": {
-                httpRequest = HttpRequest.get(splicingGetRequest(request, path));
+                httpRequest = HttpRequest.get(splicingGetRequest(request, path, cubicApiClient));
                 break;
             }
             case "POST": {
-                httpRequest = HttpRequest.post(gatewayHost + path);
+                httpRequest = HttpRequest.post(cubicApiClient.getGatewayHost() + path);
                 break;
             }
             default: {
@@ -171,9 +158,9 @@ public abstract class BaseService implements ApiService {
      * @return {@link HttpResponse}
      * @throws ApiException 自定义异常
      */
-    private <O, T extends ResultResponse> HttpResponse doRequest(BaseRequest<O, T> request) throws ApiException {
-        try (HttpResponse httpResponse = getHttpRequestByRequestMethod(request).execute()) {
-            return httpResponse;
+    private <O, T extends ResultResponse> HttpResponse doRequest(BaseRequest<O, T> request, CubicApiClient cubicApiClient) throws ApiException {
+        try {
+            return getHttpRequestByRequestMethod(request, cubicApiClient).execute();
         } catch (Exception e) {
             throw new ApiException(ErrorCode.OPERATION_ERROR, e.getMessage());
         }
@@ -186,18 +173,15 @@ public abstract class BaseService implements ApiService {
      * @return {@link T}
      * @throws ApiException 业务异常
      */
-    private  <O, T extends ResultResponse> T res(BaseRequest<O, T> request) throws ApiException {
-        if (cubicApiClient == null || StringUtils.isAnyBlank(cubicApiClient.getAccessKey(), cubicApiClient.getSecretKey())) {
-            throw new ApiException(ErrorCode.NO_AUTH_ERROR, "请先配置密钥AccessKey/SecretKey");
-        }
+    private <O, T extends ResultResponse> T res(BaseRequest<O, T> request, CubicApiClient cubicApiClient) throws ApiException {
         T rsp;
         try {
             Class<T> clazz = request.getResponseClass();
-            rsp = clazz.newInstance();
+            rsp = clazz.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
-            throw new ApiException(ErrorCode.OPERATION_ERROR, e.getMessage());
+            throw new ApiException(ErrorCode.OPERATION_ERROR, "响应对象实例化失败: " + e.getMessage());
         }
-        HttpResponse httpResponse = doRequest(request);
+        HttpResponse httpResponse = doRequest(request, cubicApiClient);
         String body = httpResponse.body();
         Map<String, Object> data = new HashMap<>();
         if (httpResponse.getStatus() != 200) {
