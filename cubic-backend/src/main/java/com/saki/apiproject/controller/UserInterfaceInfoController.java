@@ -2,8 +2,6 @@ package com.saki.apiproject.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-
-
 import com.saki.apiproject.annotation.AuthCheck;
 import com.saki.apiproject.common.DeleteRequest;
 import com.saki.apiproject.constant.CommonConstant;
@@ -31,7 +29,7 @@ import java.util.List;
 /**
  * @author JianShang
  * @version 1.0.0
- * @description 接口管理
+ * @description 用户与接口的调用信息管理
  * @date 2024-09-13 12:04:16
  */
 @RestController
@@ -73,6 +71,7 @@ public class UserInterfaceInfoController {
         long newUserInterfaceInfoId = userInterfaceInfo.getId();
         return ResultUtils.success(newUserInterfaceInfoId);
     }
+
     /**
      * 删除
      *
@@ -112,7 +111,7 @@ public class UserInterfaceInfoController {
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> updateUserInterfaceInfo(@RequestBody UserInterfaceInfoUpdateRequest userInterfaceInfoUpdateRequest,
-                                                     HttpServletRequest request) {
+                                                         HttpServletRequest request) {
         if (userInterfaceInfoUpdateRequest == null || userInterfaceInfoUpdateRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
