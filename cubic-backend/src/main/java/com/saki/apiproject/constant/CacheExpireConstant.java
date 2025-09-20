@@ -20,5 +20,5 @@ public interface CacheExpireConstant {
     /**
      * Caffeine 接口详细信息缓存过期时间
      */
-    long CAFFEINE_CACHE_EXPIRE = 5L;
+    long CAFFEINE_CACHE_EXPIRE = 10L;
 }
