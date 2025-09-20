@@ -1,52 +1,29 @@
 package com.saki.cubicapiclientsdk.config;
 
-import com.saki.cubicapiclientsdk.client.CubicApiClient;
+import com.saki.cubicapiclientsdk.factory.CubicApiClientFactory;
 import com.saki.cubicapiclientsdk.service.ApiService;
 import com.saki.cubicapiclientsdk.service.impl.ApiServiceImpl;
-import lombok.Data;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
 /**
  * @author sakisaki
  * @version 1.0.0
- * @description JsApi 客户端配置
+ * @description 向Spring容器注入 CubicApiClientFactory 和 ApiService 这两个Bean，其它可以通过自动注入直接使用
  * @date 2024-09-13 03:28:17
  */
-@Data
 @Configuration
-@ComponentScan
-@ConfigurationProperties("cubic.api.client")
+@EnableConfigurationProperties(CubicApiClientProperties.class)
 public class CubicApiClientConfig {
 
-    /**
-     * 访问密钥
-     */
-    private String accessKey;
-    /**
-     * 秘密密钥
-     */
-    private String secretKey;
-    /**
-     * 网关
-     */
-    private String host;
-
     @Bean
-    public CubicApiClient cubicApiClient() {
-        return new CubicApiClient(accessKey, secretKey);
+    public CubicApiClientFactory cubicApiClientFactory(CubicApiClientProperties properties) {
+        return new CubicApiClientFactory(properties);
     }
 
     @Bean
     public ApiService apiService() {
-        ApiServiceImpl apiServiceImpl = new ApiServiceImpl();
-        apiServiceImpl.setCubicApiClient(new CubicApiClient(accessKey, secretKey));
-        if (StringUtils.isNotBlank(host)) {
-            apiServiceImpl.setGatewayHost(host);
-        }
-        return apiServiceImpl;
+        return new ApiServiceImpl();
     }
 }
