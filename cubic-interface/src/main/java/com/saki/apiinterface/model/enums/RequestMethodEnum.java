@@ -1,4 +1,4 @@
-package com.saki.cubicapiclientsdk.model.enums;
+package com.saki.apiinterface.model.enums;
 
 import lombok.Getter;
 

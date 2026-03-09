@@ -1,11 +1,10 @@
 package com.saki.apiinterface.controller;
 
 import cn.hutool.json.JSONUtil;
-import com.saki.cubicapiclientsdk.exception.ApiException;
-import com.saki.cubicapiclientsdk.model.param.*;
-import com.saki.cubicapiclientsdk.model.response.NameResponse;
-import com.saki.cubicapiclientsdk.model.response.RandomWallpaperResponse;
-import com.saki.cubicapiclientsdk.model.response.ResultResponse;
+import com.saki.apiinterface.model.param.*;
+import com.saki.apiinterface.model.response.NameResponse;
+import com.saki.apiinterface.model.response.RandomWallpaperResponse;
+import com.saki.apiinterface.model.response.ResultResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -43,6 +42,7 @@ public class ServiceController {
     public String getPoisonousChickenSoup() {
         return get("https://api.btstu.cn/yan/api.php?charset=utf-8&encode=json");
     }
+
     @GetMapping("/loversPrattle")
     public String getLoversPrattle() {
         return get("https://api.zxki.cn/api/twqh");
@@ -61,7 +61,7 @@ public class ServiceController {
     // }
 
     @GetMapping("/randomWallpaper")
-    public RandomWallpaperResponse randomWallpaper(RandomWallpaperParams randomWallpaperParams) throws ApiException {
+    public RandomWallpaperResponse randomWallpaper(RandomWallpaperParams randomWallpaperParams) {
         String baseUrl = "https://api.btstu.cn/sjbz/api.php";
         String url = buildUrl(baseUrl, randomWallpaperParams);
         if (StringUtils.isAllBlank(randomWallpaperParams.getLx(), randomWallpaperParams.getMethod())) {
@@ -73,7 +73,7 @@ public class ServiceController {
     }
 
     @GetMapping("/horoscope")
-    public ResultResponse getHoroscope(HoroscopeParams horoscopeParams) throws ApiException {
+    public ResultResponse getHoroscope(HoroscopeParams horoscopeParams) {
         String response = get("http://v2.xxapi.cn/api/horoscope", horoscopeParams);
         Map<String, Object> fromResponse = responseToMap(response);
         // boolean success = (boolean) fromResponse.get("request_id");

@@ -2,7 +2,6 @@ package com.saki.apigateway.gateway;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-
 import com.saki.common.common.BusinessException;
 import com.saki.common.common.ErrorCode;
 import com.saki.common.model.dto.RequestParamsField;
@@ -35,7 +34,6 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
@@ -92,10 +90,6 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
      */
     private Mono<Void> verifyParameters(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
-        // 请求白名单
-        // if (!WHITE_HOST_LIST.contains(getIp(request))) {
-        //     throw new BusinessException(ErrorCode.FORBIDDEN_ERROR);
-        // }
         HttpHeaders headers = request.getHeaders();
         String body = headers.getFirst("body");
         String accessKey = headers.getFirst("accessKey");
@@ -136,9 +130,9 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
                 uri = uri.substring(0, index);
             }
 
-            if (uri.contains(GATEWAY_HTTP_HOST)) {
-                uri = uri.replace(GATEWAY_HTTP_HOST, GATEWAY_HOST);
-            }
+            // if (uri.contains(GATEWAY_HTTP_HOST)) {
+            //     uri = uri.replace(GATEWAY_HTTP_HOST, GATEWAY_HOST);
+            // }
             log.info("请求路径为：{}", uri);
             // 校验接口
             InterfaceInfo interfaceInfo = innerInterfaceInfoService.getInterfaceInfo(uri, method);
@@ -149,6 +143,7 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
             if (interfaceInfo.getStatus() == InterfaceInfoStatusEnum.OFFLINE.getValue()) {
                 throw new BusinessException(ErrorCode.PARAMS_ERROR, "接口未开启");
             }
+
             MultiValueMap<String, String> queryParams = request.getQueryParams();
             String requestParams = interfaceInfo.getRequestParams();
             List<RequestParamsField> list = new Gson().fromJson(requestParams, new TypeToken<List<RequestParamsField>>() {
@@ -258,7 +253,7 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
                                             // 调用成功，接口调用次数 + 1
                                             innerUserInterfaceInfoService.invokeCount(interfaceInfo.getId(), user.getId());
                                             innerUserService.reduceBalance(interfaceInfo.getReduceScore(), user.getId(), user.getBalance());
-                                            innerInterfaceInfoService.updateTotal(interfaceInfo.getId(),interfaceInfo.getTotalInvokes());
+                                            innerInterfaceInfoService.updateTotal(interfaceInfo.getId(), interfaceInfo.getTotalInvokes());
                                         } catch (Exception e) {
                                             log.error("invokeCount error", e);
                                         }
@@ -290,7 +285,6 @@ public class GatewayGlobalFilter implements GlobalFilter, Ordered {
                 // mutate() 方法返回一个 ServerWebExchange.Builder对象
                 // 将装饰后的响应对象替换掉原本 ServerWebExchange 实例中的原始响应对象
                 ServerWebExchange serverWebExchange = exchange.mutate().response(decoratedResponse).build();
-                URI uri = exchange.getRequest().getURI();
                 return chain.filter(serverWebExchange);
             }
             // 降级处理返回数据

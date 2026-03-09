@@ -3,10 +3,9 @@ package com.saki.apiinterface.utils;
 import cn.hutool.json.JSONObject;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import com.saki.cubicapiclientsdk.model.response.ResultResponse;
+import com.saki.apiinterface.model.response.ResultResponse;
 import com.saki.common.common.BusinessException;
 import com.saki.common.common.ErrorCode;
-
 
 import java.util.Map;
 

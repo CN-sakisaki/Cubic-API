@@ -1,4 +1,4 @@
-package com.saki.cubicapiclientsdk.model.response;
+package com.saki.apiinterface.model.response;
 
 import lombok.Data;
 
